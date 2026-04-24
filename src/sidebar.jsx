@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 const navItems = [
   { id: "timetable", label: "시간표", icon: "📅" },
@@ -6,10 +6,24 @@ const navItems = [
   { id: "anthem", label: "기상곡 신청", icon: "🎵" },
   { id: "notices", label: "공지사항", icon: "📢" },
   { id: "agenda", label: "학교 안건", icon: "📋" },
+  { id: "attendance", label: "이석/외출 현황", icon: "🏃" },
 ];
 
 export default function Sidebar({ user, activePage, setActivePage, onLogout }) {
   const [collapsed, setCollapsed] = useState(false);
+  const [isDark, setIsDark] = useState(() => {
+    return localStorage.getItem("theme") !== "light";
+  });
+
+  useEffect(() => {
+    if (isDark) {
+      document.documentElement.classList.remove("light");
+      localStorage.setItem("theme", "dark");
+    } else {
+      document.documentElement.classList.add("light");
+      localStorage.setItem("theme", "light");
+    }
+  }, [isDark]);
 
   const nameOnly = user.displayName.replace(/^[0-9]+/, "");
   const studentId = user.displayName.match(/^[0-9]+/)?.[0] || "";
@@ -39,7 +53,23 @@ export default function Sidebar({ user, activePage, setActivePage, onLogout }) {
       </nav>
 
       <div className="sidebar-footer">
-        <button className={`nav-item profile-item ${activePage === "profile" ? "active" : ""}`} onClick={() => setActivePage("profile")}>
+        {/* 다크/라이트 모드 토글 */}
+        <button
+          className="nav-item theme-toggle"
+          onClick={() => setIsDark(!isDark)}
+          title={isDark ? "라이트 모드로 전환" : "다크 모드로 전환"}
+        >
+          <span className="nav-icon">{isDark ? "☀️" : "🌙"}</span>
+          {!collapsed && (
+            <span className="nav-label">{isDark ? "라이트 모드" : "다크 모드"}</span>
+          )}
+        </button>
+
+        {/* 프로필 */}
+        <button
+          className={`nav-item profile-item ${activePage === "profile" ? "active" : ""}`}
+          onClick={() => setActivePage("profile")}
+        >
           <img src={user.photoURL} alt="프로필" className="profile-avatar" />
           {!collapsed && (
             <div className="profile-info">
@@ -48,6 +78,7 @@ export default function Sidebar({ user, activePage, setActivePage, onLogout }) {
             </div>
           )}
         </button>
+
         <button className="logout-btn" onClick={onLogout}>
           {collapsed ? "↩" : "로그아웃"}
         </button>

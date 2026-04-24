@@ -1,6 +1,7 @@
 import { initializeApp } from "firebase/app";
 import { getAuth, GoogleAuthProvider } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
+
 const firebaseConfig = {
   apiKey: "AIzaSyB3eDtyGyacexgxKtsNtDYz9oA5GZkjlec",
   authDomain: "my-school-app-d7c63.firebaseapp.com",
@@ -13,7 +14,9 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 export const provider = new GoogleAuthProvider();
-
 export const db = getFirestore(app);
-// 학교 계정만 허용 — 학교 도메인으로 바꿔줘!
+
 provider.setCustomParameters({ hd: "sshs.hs.kr" });
+
+// ✅ Google Sheets 읽기 권한 추가
+provider.addScope("https://www.googleapis.com/auth/spreadsheets");

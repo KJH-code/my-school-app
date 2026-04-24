@@ -1,4 +1,4 @@
-import { signInWithPopup, signOut, onAuthStateChanged } from "firebase/auth";
+import { signInWithPopup, signOut, onAuthStateChanged, GoogleAuthProvider } from "firebase/auth";
 import { auth, provider } from "./firebase";
 import { useState, useEffect } from "react";
 import Sidebar from "./Sidebar";
@@ -6,6 +6,8 @@ import "./App.css";
 import Grades from "./Grades";
 import Anthem from "./Anthem";
 import Timetable from "./Timetable";
+import Notices from "./Notices";
+import Attendance from "./Attendance";
 function App() {
   const [user, setUser] = useState(null);
   const [activePage, setActivePage] = useState("home");
@@ -16,7 +18,14 @@ function App() {
     });
   }, []);
 
-  const login = () => signInWithPopup(auth, provider);
+  const login = async () => {
+    const result = await signInWithPopup(auth, provider);
+  // Sheets 접근용 OAuth 토큰 저장
+    const credential = GoogleAuthProvider.credentialFromResult(result);
+    if (credential?.accessToken) {
+      sessionStorage.setItem("sheets_token", credential.accessToken);
+    }
+  };
   const logout = () => signOut(auth);
 
   if (!user) {
@@ -75,6 +84,10 @@ function PageContent({ activePage, user }) {
     return <Anthem user={user} />;
   if (activePage === "timetable")
      return <Timetable user={user} />;
+  if (activePage === "notices") 
+    return <Notices user={user} />;
+if (activePage === "attendance") 
+  return <Attendance user={user} />;
   const page = pages[activePage];
   return (
     <div className="placeholder-page">
