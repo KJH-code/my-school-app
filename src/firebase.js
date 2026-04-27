@@ -3,12 +3,12 @@ import { getAuth, GoogleAuthProvider } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
 
 const firebaseConfig = {
-  apiKey: "AIzaSyB3eDtyGyacexgxKtsNtDYz9oA5GZkjlec",
-  authDomain: "my-school-app-d7c63.firebaseapp.com",
-  projectId: "my-school-app-d7c63",
-  storageBucket: "my-school-app-d7c63.firebasestorage.app",
-  messagingSenderId: "531431525847",
-  appId: "1:531431525847:web:29ac03a8835576a3308f92"
+  apiKey: "AIzaSyACAcjtRdWLFRA1TcSi-M4K0F8sf-2TljQ",
+  authDomain: "sshs-portal-7602a.firebaseapp.com",
+  projectId: "sshs-portal-7602a",
+  storageBucket: "sshs-portal-7602a.firebasestorage.app",
+  messagingSenderId: "493777626300",
+  appId: "1:493777626300:web:19749a4dd449c5a88b5cb9"
 };
 
 const app = initializeApp(firebaseConfig);
@@ -17,6 +17,4 @@ export const provider = new GoogleAuthProvider();
 export const db = getFirestore(app);
 
 provider.setCustomParameters({ hd: "sshs.hs.kr" });
-
-// ✅ Google Sheets 읽기 권한 추가
 provider.addScope("https://www.googleapis.com/auth/spreadsheets");
