@@ -16,6 +16,7 @@ export default function Agenda({ user }) {
 
   const nameOnly = user?.displayName?.replace(/^[0-9]+/, "") || "";
   const isAdmin = user?.email === "26027@sshs.hs.kr";
+
   const fetchPosts = async () => {
     setLoading(true);
     try {
@@ -46,9 +47,6 @@ export default function Agenda({ user }) {
     const voteRef = doc(db, "agenda_votes", voteId);
     const postRef = doc(db, "agenda_posts", postId);
     const current = myVotes[postId];
-
-    // 같은 버튼 또 누르면 무시 (연타 방지)
-    // 단, 다른 버튼으로 바꾸는 건 허용
 
     // 1. 화면부터 즉시 업데이트 (optimistic)
     const prevVotes = myVotes;
@@ -101,35 +99,64 @@ export default function Agenda({ user }) {
       alert("투표에 실패했어요. 다시 시도해주세요.");
     }
   };
+
   const handleReport = async (postId) => {
     if (myReports[postId]) return;
     const reportId = `${user?.uid}_${postId}`;
-    await setDoc(doc(db, "agenda_reports", reportId), { userId: user?.uid, postId });
-    await updateDoc(doc(db, "agenda_posts", postId), { reportCount: increment(1) });
+
+    // optimistic
+    const prevReports = myReports;
+    const prevPosts = posts;
     setMyReports((r) => ({ ...r, [postId]: true }));
     setPosts((p) => p.map((post) => post.id === postId
-      ? { ...post, reportCount: (post.reportCount || 0) + 1 } : post));
-    alert("신고가 접수됐어요.");
+      ? { ...post, reportCount: (post.reportCount || 0) + 1 }
+      : post));
+
+    try {
+      await setDoc(doc(db, "agenda_reports", reportId), { userId: user?.uid, postId });
+      await updateDoc(doc(db, "agenda_posts", postId), { reportCount: increment(1) });
+      alert("신고가 접수됐어요.");
+    } catch (e) {
+      console.error("신고 실패", e);
+      setMyReports(prevReports);
+      setPosts(prevPosts);
+      alert("신고에 실패했어요. 다시 시도해주세요.");
+    }
   };
 
   const handleDelete = async (postId) => {
     if (!window.confirm("삭제할까요?")) return;
-    await deleteDoc(doc(db, "agenda_posts", postId));
+
+    // optimistic
+    const prevPosts = posts;
     setPosts((p) => p.filter((post) => post.id !== postId));
+    // 상세 화면에서 삭제하는 경우 목록으로 돌아가기
+    if (selectedPost?.id === postId) setSelectedPost(null);
+
+    try {
+      await deleteDoc(doc(db, "agenda_posts", postId));
+    } catch (e) {
+      console.error("삭제 실패", e);
+      setPosts(prevPosts);
+      alert("삭제에 실패했어요.");
+    }
   };
 
   if (selectedPost) {
+    // 항상 최신 posts에서 찾기
+    const livePost = posts.find((p) => p.id === selectedPost.id) || selectedPost;
     return (
       <PostDetail
-        post={selectedPost}
+        post={livePost}
         user={user}
         isAdmin={isAdmin}
-        myVote={myVotes[selectedPost.id]}
-        myReport={myReports[selectedPost.id]}
+        myVote={myVotes[livePost.id]}
+        myReport={myReports[livePost.id]}
         onVote={handleVote}
         onReport={handleReport}
         onDelete={handleDelete}
-        onBack={() => { setSelectedPost(null); fetchPosts(); }}
+        onBack={() => setSelectedPost(null)}
+        setPosts={setPosts}
       />
     );
   }
@@ -182,7 +209,7 @@ export default function Agenda({ user }) {
   );
 }
 
-function PostDetail({ post, user, isAdmin, myVote, myReport, onVote, onReport, onDelete, onBack }) {
+function PostDetail({ post, user, isAdmin, myVote, myReport, onVote, onReport, onDelete, onBack, setPosts }) {
   const [comments, setComments] = useState([]);
   const [commentText, setCommentText] = useState("");
   const nameOnly = user?.displayName?.replace(/^[0-9]+/, "") || "";
@@ -202,22 +229,56 @@ function PostDetail({ post, user, isAdmin, myVote, myReport, onVote, onReport, o
 
   const handleComment = async () => {
     if (!commentText.trim()) return;
-    await addDoc(collection(db, "agenda_comments"), {
-      postId: post.id,
-      authorId: user?.uid,
-      authorName: nameOnly,
-      content: commentText.trim(),
-      createdAt: serverTimestamp(),
-    });
-    await updateDoc(doc(db, "agenda_posts", post.id), { commentCount: increment(1) });
-    setComments((c) => [...c, { authorName: nameOnly, content: commentText.trim(), createdAt: null }]);
+    const text = commentText.trim();
     setCommentText("");
+
+    // optimistic: 화면 먼저
+    const tempId = `temp_${Date.now()}`;
+    setComments((c) => [...c, { id: tempId, authorName: nameOnly, authorId: user?.uid, content: text, createdAt: null }]);
+    setPosts((p) => p.map((pp) => pp.id === post.id
+      ? { ...pp, commentCount: (pp.commentCount || 0) + 1 }
+      : pp));
+
+    // 서버 작업은 백그라운드
+    try {
+      const docRef = await addDoc(collection(db, "agenda_comments"), {
+        postId: post.id,
+        authorId: user?.uid,
+        authorName: nameOnly,
+        content: text,
+        createdAt: serverTimestamp(),
+      });
+      await updateDoc(doc(db, "agenda_posts", post.id), { commentCount: increment(1) });
+      // 임시 id를 진짜 id로 교체
+      setComments((c) => c.map((cm) => cm.id === tempId ? { ...cm, id: docRef.id } : cm));
+    } catch (e) {
+      console.error("댓글 실패", e);
+      setComments((c) => c.filter((cm) => cm.id !== tempId));
+      setPosts((p) => p.map((pp) => pp.id === post.id
+        ? { ...pp, commentCount: Math.max(0, (pp.commentCount || 1) - 1) }
+        : pp));
+      alert("댓글 등록에 실패했어요.");
+    }
   };
 
   const handleDeleteComment = async (commentId) => {
-    await deleteDoc(doc(db, "agenda_comments", commentId));
+    const prev = comments;
+    // optimistic
     setComments((c) => c.filter((cm) => cm.id !== commentId));
-    await updateDoc(doc(db, "agenda_posts", post.id), { commentCount: increment(-1) });
+    setPosts((p) => p.map((pp) => pp.id === post.id
+      ? { ...pp, commentCount: Math.max(0, (pp.commentCount || 1) - 1) }
+      : pp));
+
+    try {
+      await deleteDoc(doc(db, "agenda_comments", commentId));
+      await updateDoc(doc(db, "agenda_posts", post.id), { commentCount: increment(-1) });
+    } catch (e) {
+      console.error("댓글 삭제 실패", e);
+      setComments(prev);
+      setPosts((p) => p.map((pp) => pp.id === post.id
+        ? { ...pp, commentCount: (pp.commentCount || 0) + 1 }
+        : pp));
+    }
   };
 
   return (
@@ -250,8 +311,8 @@ function PostDetail({ post, user, isAdmin, myVote, myReport, onVote, onReport, o
 
         <div className="comments-section">
           <h3 className="comments-title">댓글 {comments.length}개</h3>
-          {comments.map((cm, i) => (
-            <div key={i} className="comment-item">
+          {comments.map((cm) => (
+            <div key={cm.id} className="comment-item">
               <div className="comment-header">
                 <span className="comment-author">{cm.authorName}</span>
                 <span className="comment-date">{cm.createdAt?.toDate?.().toLocaleDateString("ko-KR") || "방금"}</span>
