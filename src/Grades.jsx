@@ -2,10 +2,10 @@ import { useState } from "react";
 import "./Grades.css";
 
 const GRADE_CUTOFFS = [
-  { grade: "A+", min: 95 }, { grade: "A",  min: 90 }, { grade: "A-", min: 85 },
-  { grade: "B+", min: 80 }, { grade: "B",  min: 75 }, { grade: "B-", min: 70 },
-  { grade: "C+", min: 65 }, { grade: "C",  min: 60 }, { grade: "C-", min: 55 },
-  { grade: "D+", min: 50 }, { grade: "D",  min: 45 }, { grade: "D-", min: 40 },
+  { grade: "A+", min: 90 }, { grade: "A",  min: 85 }, { grade: "A-", min: 80 },
+  { grade: "B+", min: 75 }, { grade: "B",  min: 70 }, { grade: "B-", min: 65 },
+  { grade: "C+", min: 60 }, { grade: "C",  min: 55 }, { grade: "C-", min: 50 },
+  { grade: "D+", min: 45 }, { grade: "D",  min: 40 }, { grade: "D-", min: 35 },
   { grade: "F",  min: 0  },
 ];
 
