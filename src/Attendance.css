@@ -71,3 +71,46 @@
 .modal-confirm { background: var(--accent); border: none; color: white; padding: 10px 24px; border-radius: 8px; cursor: pointer; font-weight: 600; font-family: 'Noto Sans KR', sans-serif; transition: opacity 0.2s; }
 .modal-confirm:hover { opacity: 0.85; }
 .modal-confirm:disabled { opacity: 0.5; cursor: not-allowed; }
+.group-header td {
+  background: var(--surface);
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 700;
+  padding: 8px 14px;
+  letter-spacing: 0.5px;
+}
+
+.group-divider td {
+  height: 4px;
+  background: var(--sidebar-border);
+  padding: 0;
+}
+.filter-bar {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.filter-select {
+  padding: 10px 16px;
+  background: var(--surface);
+  border: 1px solid var(--sidebar-border);
+  border-radius: 10px;
+  color: var(--text);
+  font-size: 14px;
+  font-family: 'Noto Sans KR', sans-serif;
+  cursor: pointer;
+  outline: none;
+  transition: border-color 0.2s;
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236b7494' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  padding-right: 36px;
+  min-width: 120px;
+}
+.filter-select:focus { border-color: var(--accent); }
+.filter-select:disabled { opacity: 0.4; cursor: not-allowed; }
+.loc-btn.full { opacity: 0.4; cursor: not-allowed; border-color: #f87171; color: #f87171; }
+.loc-count { font-size: 11px; opacity: 0.7; }

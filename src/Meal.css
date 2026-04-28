@@ -1,0 +1,22 @@
+.meal-wrap { max-width: 700px; }
+.meal-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; }
+.meal-title { font-size: 24px; font-weight: 700; color: var(--text); }
+
+.meal-day-tabs { display: flex; gap: 8px; margin-bottom: 24px; }
+.meal-day-btn { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 12px 8px; border-radius: 12px; border: 1px solid var(--sidebar-border); background: var(--surface); color: var(--text-sub); cursor: pointer; transition: all 0.2s; font-family: 'Noto Sans KR', sans-serif; }
+.meal-day-btn:hover { border-color: var(--accent); color: var(--text); }
+.meal-day-btn.active { background: var(--accent-glow); border-color: var(--accent); color: var(--accent); }
+.meal-day-btn.today { border-color: #6ee7b7; }
+.meal-day-btn.today.active { background: rgba(110,231,183,0.15); border-color: #6ee7b7; color: #6ee7b7; }
+.meal-day-label { font-size: 16px; font-weight: 700; }
+.meal-date-label { font-size: 11px; opacity: 0.7; }
+
+.today-badge { display: inline-block; background: rgba(110,231,183,0.15); color: #6ee7b7; border: 1px solid #6ee7b7; padding: 4px 12px; border-radius: 20px; font-size: 12px; margin-bottom: 16px; }
+
+.meal-content { display: flex; flex-direction: column; gap: 16px; }
+.meal-card { background: var(--sidebar-bg); border: 1px solid var(--sidebar-border); border-radius: 14px; padding: 20px 24px; }
+.meal-type { font-size: 13px; font-weight: 700; color: var(--accent); margin-bottom: 12px; letter-spacing: 0.5px; }
+.meal-list { list-style: none; display: flex; flex-direction: column; gap: 8px; }
+.meal-item { font-size: 15px; color: var(--text); padding: 6px 0; border-bottom: 1px solid var(--sidebar-border); }
+.meal-item:last-child { border-bottom: none; }
+.empty { color: var(--text-sub); text-align: center; padding: 40px; }

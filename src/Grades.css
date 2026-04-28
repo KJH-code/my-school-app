@@ -1,0 +1,53 @@
+.grades-container { max-width: 760px; padding-bottom: 60px; }
+.grades-header { margin-bottom: 32px; }
+.grades-title { font-size: 28px; font-weight: 700; color: var(--text); margin-bottom: 6px; }
+.grades-subtitle { font-size: 14px; color: var(--text-sub); }
+
+.grades-overall-card { display: flex; align-items: center; gap: 16px; background: var(--surface); border: 1px solid var(--sidebar-border); border-radius: 14px; padding: 18px 28px; margin-bottom: 28px; }
+.grades-overall-label { font-size: 13px; color: var(--text-sub); flex: 1; }
+.grades-overall-score { font-size: 32px; font-weight: 700; font-family: monospace; }
+.grades-overall-grade { font-size: 22px; font-weight: 700; }
+
+.grades-subject-list { display: flex; flex-direction: column; gap: 16px; }
+
+.grades-card { background: var(--sidebar-bg); border: 1px solid var(--sidebar-border); border-radius: 14px; padding: 24px; }
+.grades-card-header { display: flex; align-items: center; gap: 12px; margin-bottom: 18px; }
+.grades-subject-name-input { flex: 1; background: var(--bg); border: 1px solid var(--sidebar-border); border-radius: 8px; padding: 8px 14px; color: var(--text); font-size: 15px; font-weight: 600; font-family: 'Noto Sans KR', sans-serif; outline: none; }
+.grades-subject-name-input:focus { border-color: var(--accent); }
+
+.grades-result-badge { display: flex; align-items: center; gap: 8px; }
+.grades-result-score { font-size: 20px; font-weight: 700; font-family: monospace; }
+.grades-result-grade-badge { font-size: 13px; font-weight: 700; padding: 3px 10px; border-radius: 20px; }
+.grades-result-empty { font-size: 12px; color: var(--text-muted); }
+.grades-remove-btn { background: none; border: none; color: var(--text-muted); font-size: 16px; cursor: pointer; padding: 4px 8px; border-radius: 6px; }
+.grades-remove-btn:hover { color: #f87171; }
+
+.grades-weight-warning { font-size: 12px; color: #fbbf24; background: rgba(251,191,36,0.08); border-radius: 8px; padding: 6px 12px; margin-bottom: 14px; }
+
+.grades-exam-row { display: flex; gap: 16px; margin-bottom: 20px; flex-wrap: wrap; }
+.grades-exam-block { flex: 1; min-width: 200px; }
+.grades-exam-label { font-size: 11px; color: var(--text-sub); text-transform: uppercase; letter-spacing: 1px; display: block; margin-bottom: 8px; }
+.grades-exam-inputs { display: flex; align-items: center; gap: 6px; }
+
+.grades-score-input { background: var(--bg); border: 1px solid var(--sidebar-border); border-radius: 8px; padding: 8px 10px; color: var(--text); font-size: 14px; width: 72px; font-family: monospace; outline: none; text-align: center; }
+.grades-score-input:focus { border-color: var(--accent); }
+.grades-score-input-sm { width: 54px; }
+.grades-score-input-md { width: 90px; font-family: 'Noto Sans KR', sans-serif; text-align: left; }
+.grades-separator { color: var(--text-muted); font-size: 16px; }
+.grades-pct { color: var(--text-sub); font-size: 13px; }
+
+.grades-perf-section { border-top: 1px solid var(--sidebar-border); padding-top: 16px; }
+.grades-perf-title { font-size: 11px; color: var(--text-sub); text-transform: uppercase; letter-spacing: 1px; display: block; margin-bottom: 10px; }
+.grades-perf-row { display: flex; align-items: center; gap: 6px; margin-bottom: 8px; flex-wrap: wrap; }
+.grades-remove-perf-btn { background: none; border: 1px solid var(--sidebar-border); border-radius: 6px; color: var(--text-sub); font-size: 16px; width: 28px; height: 28px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+.grades-remove-perf-btn:hover { color: #f87171; border-color: #f87171; }
+.grades-add-perf-btn { background: none; border: 1px dashed var(--sidebar-border); border-radius: 8px; color: var(--text-sub); font-size: 13px; padding: 6px 14px; cursor: pointer; margin-top: 4px; font-family: 'Noto Sans KR', sans-serif; transition: border-color 0.2s, color 0.2s; }
+.grades-add-perf-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+.grades-add-subject-btn { margin-top: 20px; background: none; border: 1px dashed var(--accent); border-radius: 10px; color: var(--accent); font-size: 14px; padding: 12px 24px; cursor: pointer; width: 100%; font-family: 'Noto Sans KR', sans-serif; transition: background 0.2s; }
+.grades-add-subject-btn:hover { background: var(--accent-glow); }
+
+.grades-legend { margin-top: 32px; background: var(--sidebar-bg); border: 1px solid var(--sidebar-border); border-radius: 12px; padding: 14px 20px; }
+.grades-legend-title { font-size: 11px; color: var(--text-sub); text-transform: uppercase; letter-spacing: 1px; display: block; margin-bottom: 10px; }
+.grades-legend-items { display: flex; flex-wrap: wrap; gap: 6px 16px; }
+.grades-legend-item { font-size: 12px; font-family: monospace; }

@@ -1,0 +1,133 @@
+.profile-wrap { max-width: 700px; padding-bottom: 60px; }
+.profile-header { margin-bottom: 28px; }
+.profile-title { font-size: 28px; font-weight: 700; color: var(--text); }
+
+.profile-card {
+  background: var(--sidebar-bg);
+  border: 1px solid var(--sidebar-border);
+  border-radius: 16px;
+  padding: 28px;
+  display: flex;
+  gap: 28px;
+  margin-bottom: 24px;
+  align-items: center;
+}
+
+.profile-photo-section { display: flex; flex-direction: column; align-items: center; gap: 12px; flex-shrink: 0; }
+.profile-photo-wrap { position: relative; }
+.profile-photo {
+  width: 100px;
+  height: 100px;
+  border-radius: 50%;
+  border: 3px solid var(--accent);
+  object-fit: cover;
+}
+.profile-photo-uploading {
+  position: absolute;
+  inset: 0;
+  background: rgba(0,0,0,0.6);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-size: 11px;
+}
+
+.profile-photo-btn {
+  background: var(--surface);
+  border: 1px solid var(--sidebar-border);
+  color: var(--text);
+  padding: 6px 14px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 12px;
+  font-family: 'Noto Sans KR', sans-serif;
+  transition: all 0.15s;
+}
+.profile-photo-btn:hover { background: var(--accent-glow); color: var(--accent); border-color: var(--accent); }
+
+.profile-info-section { flex: 1; min-width: 0; }
+.profile-name-row { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
+.profile-name { font-size: 24px; font-weight: 700; color: var(--text); }
+.profile-id-badge {
+  background: var(--accent-glow);
+  color: var(--accent);
+  padding: 4px 10px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-family: 'Space Mono', monospace;
+}
+.profile-meta { display: flex; flex-direction: column; gap: 8px; }
+.profile-meta-item { display: flex; gap: 12px; font-size: 13px; }
+.profile-meta-label { color: var(--text-sub); min-width: 70px; }
+.profile-meta-value { color: var(--text); }
+
+.profile-section {
+  background: var(--sidebar-bg);
+  border: 1px solid var(--sidebar-border);
+  border-radius: 16px;
+  padding: 24px;
+  margin-bottom: 16px;
+}
+.profile-section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+.profile-section-title { font-size: 16px; font-weight: 700; color: var(--text); }
+.profile-edit-btn {
+  background: var(--accent-glow);
+  border: 1px solid var(--accent);
+  color: var(--accent);
+  padding: 6px 14px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 12px;
+  font-family: 'Noto Sans KR', sans-serif;
+}
+
+.profile-bio { font-size: 14px; color: var(--text); line-height: 1.6; white-space: pre-wrap; }
+.profile-bio-empty { color: var(--text-muted); }
+
+.profile-bio-edit { display: flex; flex-direction: column; gap: 12px; }
+.profile-bio-textarea {
+  width: 100%;
+  background: var(--bg);
+  border: 1px solid var(--sidebar-border);
+  border-radius: 10px;
+  padding: 12px;
+  color: var(--text);
+  font-size: 14px;
+  font-family: 'Noto Sans KR', sans-serif;
+  outline: none;
+  resize: vertical;
+  box-sizing: border-box;
+}
+.profile-bio-textarea:focus { border-color: var(--accent); }
+.profile-bio-actions { display: flex; justify-content: space-between; align-items: center; }
+.profile-char-count { font-size: 11px; color: var(--text-muted); }
+.profile-cancel-btn {
+  background: none; border: 1px solid var(--sidebar-border);
+  color: var(--text-sub); padding: 7px 14px; border-radius: 8px;
+  cursor: pointer; font-size: 13px; margin-right: 6px;
+  font-family: 'Noto Sans KR', sans-serif;
+}
+.profile-save-btn {
+  background: var(--accent); border: none; color: white;
+  padding: 7px 16px; border-radius: 8px; cursor: pointer;
+  font-size: 13px; font-weight: 600;
+  font-family: 'Noto Sans KR', sans-serif;
+}
+
+.profile-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+.profile-stat {
+  background: var(--surface);
+  border: 1px solid var(--sidebar-border);
+  border-radius: 12px;
+  padding: 18px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.profile-stat:hover { border-color: var(--accent); transform: translateY(-2px); }
+.profile-stat-num { font-size: 28px; font-weight: 700; color: var(--accent); font-family: monospace; }
+.profile-stat-label { font-size: 12px; color: var(--text-sub); }

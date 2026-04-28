@@ -1,0 +1,53 @@
+.agenda-wrap { max-width: 800px; }
+.agenda-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; }
+.agenda-title { font-size: 24px; font-weight: 700; color: var(--text); }
+.agenda-write-btn { background: var(--accent); border: none; color: white; padding: 10px 20px; border-radius: 10px; cursor: pointer; font-size: 14px; font-family: 'Noto Sans KR', sans-serif; font-weight: 600; transition: opacity 0.2s; }
+.agenda-write-btn:hover { opacity: 0.85; }
+.agenda-loading { color: var(--text-sub); text-align: center; padding: 40px; }
+.agenda-list { display: flex; flex-direction: column; gap: 12px; }
+.agenda-card { background: var(--sidebar-bg); border: 1px solid var(--sidebar-border); border-radius: 12px; padding: 20px; cursor: pointer; transition: border-color 0.2s, background 0.2s; position: relative; }
+.agenda-card:hover { border-color: var(--accent); background: var(--surface); }
+.agenda-card.blurred { filter: blur(3px); pointer-events: none; }
+.report-notice { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,0.5); border-radius: 12px; color: #fbbf24; font-weight: 600; filter: none; pointer-events: auto; }
+.agenda-card-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+.agenda-card-title { font-size: 16px; font-weight: 600; color: var(--text); }
+.agenda-card-date { font-size: 12px; color: var(--text-sub); }
+.agenda-card-preview { font-size: 13px; color: var(--text-sub); margin-bottom: 12px; line-height: 1.6; }
+.agenda-card-footer { display: flex; align-items: center; justify-content: space-between; }
+.agenda-author { font-size: 12px; color: var(--text-muted); }
+.agenda-votes { display: flex; gap: 8px; }
+.vote-badge { font-size: 12px; padding: 4px 10px; border-radius: 20px; background: var(--surface); color: var(--text-sub); }
+.vote-badge.up.active { background: rgba(110, 231, 183, 0.15); color: #6ee7b7; }
+.vote-badge.down.active { background: rgba(248, 113, 113, 0.15); color: #f87171; }
+.comment-badge { font-size: 12px; padding: 4px 10px; border-radius: 20px; background: var(--surface); color: var(--text-sub); }
+.back-btn { background: none; border: none; color: var(--accent); font-size: 14px; cursor: pointer; margin-bottom: 20px; padding: 0; font-family: 'Noto Sans KR', sans-serif; }
+.post-detail { background: var(--sidebar-bg); border: 1px solid var(--sidebar-border); border-radius: 16px; padding: 32px; }
+.post-detail-header { border-bottom: 1px solid var(--sidebar-border); padding-bottom: 16px; margin-bottom: 24px; }
+.post-title { font-size: 22px; font-weight: 700; color: var(--text); margin-bottom: 8px; }
+.post-meta { display: flex; gap: 12px; font-size: 13px; color: var(--text-sub); }
+.post-content { font-size: 15px; color: var(--text); line-height: 1.8; margin-bottom: 24px; white-space: pre-wrap; }
+.post-actions { display: flex; gap: 8px; margin-bottom: 32px; flex-wrap: wrap; }
+.vote-btn { padding: 10px 20px; border-radius: 10px; border: 1px solid var(--sidebar-border); background: var(--surface); color: var(--text-sub); font-size: 14px; font-family: 'Noto Sans KR', sans-serif; cursor: pointer; transition: all 0.2s; }
+.vote-btn.up.active { background: rgba(110,231,183,0.15); color: #6ee7b7; border-color: #6ee7b7; }
+.vote-btn.down.active { background: rgba(248,113,113,0.15); color: #f87171; border-color: #f87171; }
+.report-btn { padding: 10px 16px; border-radius: 10px; border: 1px solid var(--sidebar-border); background: none; color: var(--text-muted); font-size: 13px; font-family: 'Noto Sans KR', sans-serif; cursor: pointer; margin-left: auto; }
+.report-btn:hover { color: #fbbf24; border-color: #fbbf24; }
+.delete-btn { padding: 10px 16px; border-radius: 10px; border: 1px solid rgba(248,113,113,0.3); background: none; color: #f87171; font-size: 13px; font-family: 'Noto Sans KR', sans-serif; cursor: pointer; }
+.comments-section { border-top: 1px solid var(--sidebar-border); padding-top: 24px; }
+.comments-title { font-size: 16px; font-weight: 600; color: var(--text); margin-bottom: 16px; }
+.comment-item { padding: 12px 0; border-bottom: 1px solid var(--sidebar-border); }
+.comment-header { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+.comment-author { font-size: 13px; font-weight: 600; color: var(--text); }
+.comment-date { font-size: 11px; color: var(--text-muted); }
+.comment-delete { margin-left: auto; background: none; border: none; color: var(--text-muted); font-size: 11px; cursor: pointer; }
+.comment-delete:hover { color: #f87171; }
+.comment-content { font-size: 14px; color: var(--text-sub); line-height: 1.6; }
+.comment-input-wrap { display: flex; gap: 8px; margin-top: 16px; }
+.comment-input { flex: 1; padding: 10px 16px; background: var(--surface); border: 1px solid var(--sidebar-border); border-radius: 10px; color: var(--text); font-size: 14px; font-family: 'Noto Sans KR', sans-serif; outline: none; }
+.comment-input:focus { border-color: var(--accent); }
+.comment-submit { background: var(--accent); border: none; color: white; padding: 10px 20px; border-radius: 10px; cursor: pointer; font-family: 'Noto Sans KR', sans-serif; font-weight: 600; }
+.agenda-modal { width: 600px; }
+.agenda-input { width: 100%; padding: 12px 16px; background: var(--surface); border: 1px solid var(--sidebar-border); border-radius: 10px; color: var(--text); font-size: 15px; font-family: 'Noto Sans KR', sans-serif; outline: none; margin-bottom: 12px; }
+.agenda-input:focus { border-color: var(--accent); }
+.agenda-textarea { width: 100%; padding: 12px 16px; background: var(--surface); border: 1px solid var(--sidebar-border); border-radius: 10px; color: var(--text); font-size: 14px; font-family: 'Noto Sans KR', sans-serif; outline: none; resize: vertical; margin-bottom: 16px; line-height: 1.6; }
+.agenda-textarea:focus { border-color: var(--accent); }

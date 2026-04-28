@@ -5,6 +5,7 @@ import {
   serverTimestamp, getCountFromServer
 } from "firebase/firestore";
 import { db } from "./firebase";
+import "./Notices.css";
 
 const TAGS = ["전체", "공지", "가정통신문", "행사", "홍보", "긴급", "학생회", "동아리"];
 const TAG_COLORS = {
@@ -19,7 +20,6 @@ const TAG_COLORS = {
 
 const PAGE_SIZE = 10;
 
-// 관리자 목록 — Firestore admins 컬렉션으로 관리
 async function checkAdmin(uid) {
   try {
     const snap = await getDocs(query(collection(db, "admins"), where("uid", "==", uid)));
@@ -32,25 +32,21 @@ export default function Notices({ user }) {
   const [loading, setLoading] = useState(false);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
-  const [cursors, setCursors] = useState([null]); // cursors[i] = startAfter for page i+1
+  const [cursors, setCursors] = useState([null]);
   const [filterTag, setFilterTag] = useState("전체");
   const [isAdmin, setIsAdmin] = useState(false);
   const [showWrite, setShowWrite] = useState(false);
   const [selectedNotice, setSelectedNotice] = useState(null);
-
   useEffect(() => {
-    checkAdmin(user.uid).then(setIsAdmin);
-  }, [user.uid]);
-
+    if (user?.uid) {
+      checkAdmin(user.uid).then(setIsAdmin);
+    } else {
+      setIsAdmin(false);
+    }
+  }, [user?.uid]);
   const loadPage = useCallback(async (pageNum, tag, cursorSnap) => {
     setLoading(true);
     try {
-      let q;
-      const base = tag === "전체"
-        ? collection(db, "notices")
-        : null;
-
-      // 전체 카운트
       const countQ = tag === "전체"
         ? query(collection(db, "notices"))
         : query(collection(db, "notices"), where("tag", "==", tag));
@@ -58,7 +54,7 @@ export default function Notices({ user }) {
       const total = countSnap.data().count;
       setTotalPages(Math.max(1, Math.ceil(total / PAGE_SIZE)));
 
-      // 데이터 쿼리
+      let q;
       if (tag === "전체") {
         q = cursorSnap
           ? query(collection(db, "notices"), orderBy("createdAt", "desc"), startAfter(cursorSnap), limit(PAGE_SIZE))
@@ -70,9 +66,8 @@ export default function Notices({ user }) {
       }
 
       const snap = await getDocs(q);
-      setNotices(snap.docs.map(d => ({ id: d.id, ...d.data(), _snap: d })));
+      setNotices(snap.docs.map(d => ({ id: d.id, ...d.data() })));
 
-      // 다음 페이지 커서 저장
       if (snap.docs.length === PAGE_SIZE) {
         setCursors(prev => {
           const next = [...prev];
@@ -104,41 +99,38 @@ export default function Notices({ user }) {
   };
 
   return (
-    <div style={s.container}>
-      <div style={s.header}>
+    <div className="notices-wrap">
+      <div className="notices-header">
         <div>
-          <h2 style={s.title}>📢 공지사항</h2>
-          <p style={s.subtitle}>학교 공지, 행사, 가정통신문 등을 확인하세요.</p>
+          <h2 className="notices-title">📢 공지사항</h2>
+          <p className="notices-subtitle">학교 공지, 행사, 가정통신문 등을 확인하세요.</p>
         </div>
         {isAdmin && (
-          <button style={s.writeBtn} onClick={() => setShowWrite(true)}>
-            ✏️ 공지 작성
-          </button>
+          <button className="notices-write-btn" onClick={() => setShowWrite(true)}>✏️ 공지 작성</button>
         )}
       </div>
 
-      {/* 태그 필터 */}
-      <div style={s.tagRow}>
-        {TAGS.map(tag => (
-          <button
-            key={tag}
-            style={{
-              ...s.tagBtn,
-              ...(filterTag === tag ? s.tagBtnActive : {}),
-              ...(tag !== "전체" && filterTag === tag ? { background: TAG_COLORS[tag]?.bg, color: TAG_COLORS[tag]?.color, borderColor: TAG_COLORS[tag]?.color } : {}),
-            }}
-            onClick={() => setFilterTag(tag)}
-          >{tag}</button>
-        ))}
+      <div className="notices-tag-row">
+        {TAGS.map(tag => {
+          const ts = TAG_COLORS[tag];
+          const isActive = filterTag === tag;
+          return (
+            <button
+              key={tag}
+              className={`notices-tag-btn ${isActive ? "active" : ""}`}
+              style={isActive && tag !== "전체" ? { background: ts.bg, color: ts.color, borderColor: ts.color } : {}}
+              onClick={() => setFilterTag(tag)}
+            >{tag}</button>
+          );
+        })}
       </div>
 
-      {/* 공지 목록 */}
       {loading ? (
-        <div style={s.empty}>불러오는 중...</div>
+        <div className="notices-empty">불러오는 중...</div>
       ) : notices.length === 0 ? (
-        <div style={s.empty}>공지사항이 없어요.</div>
+        <div className="notices-empty">공지사항이 없어요.</div>
       ) : (
-        <div style={s.list}>
+        <div className="notices-list">
           {notices.map((notice, idx) => (
             <NoticeCard
               key={notice.id}
@@ -150,22 +142,16 @@ export default function Notices({ user }) {
         </div>
       )}
 
-      {/* 페이지네이션 */}
       {totalPages > 1 && (
-        <div style={s.pagination}>
-          <button style={s.pageBtn} disabled={page === 1} onClick={() => goToPage(page - 1)}>←</button>
+        <div className="notices-pagination">
+          <button className="notices-page-btn" disabled={page === 1} onClick={() => goToPage(page - 1)}>←</button>
           {Array.from({ length: totalPages }, (_, i) => i + 1).map(p => (
-            <button
-              key={p}
-              style={{ ...s.pageBtn, ...(p === page ? s.pageBtnActive : {}) }}
-              onClick={() => goToPage(p)}
-            >{p}</button>
+            <button key={p} className={`notices-page-btn ${p === page ? "active" : ""}`} onClick={() => goToPage(p)}>{p}</button>
           ))}
-          <button style={s.pageBtn} disabled={page === totalPages} onClick={() => goToPage(page + 1)}>→</button>
+          <button className="notices-page-btn" disabled={page === totalPages} onClick={() => goToPage(page + 1)}>→</button>
         </div>
       )}
 
-      {/* 공지 작성 모달 */}
       {showWrite && (
         <WriteModal
           user={user}
@@ -179,7 +165,6 @@ export default function Notices({ user }) {
         />
       )}
 
-      {/* 공지 상세 모달 */}
       {selectedNotice && (
         <DetailModal
           notice={selectedNotice}
@@ -192,30 +177,26 @@ export default function Notices({ user }) {
   );
 }
 
-// ── 공지 카드 ─────────────────────────────────────────────
 function NoticeCard({ notice, num, onClick }) {
-  const tagStyle = TAG_COLORS[notice.tag] || { bg: "#1a2032", color: "#6b7494" };
+  const tagStyle = TAG_COLORS[notice.tag] || { bg: "var(--surface)", color: "var(--text-sub)" };
   const date = notice.createdAt?.toDate?.()?.toLocaleDateString("ko-KR") || "";
 
   return (
-    <div style={s.card} onClick={onClick}>
-      <div style={s.cardLeft}>
-        <div style={s.cardTop}>
-          <span style={{ ...s.tag, background: tagStyle.bg, color: tagStyle.color }}>
-            {notice.tag}
-          </span>
-          {notice.imageUrl && <span style={s.hasImg}>🖼</span>}
-          {notice.link && <span style={s.hasImg}>🔗</span>}
+    <div className="notice-card" onClick={onClick}>
+      <div className="notice-card-left">
+        <div className="notice-card-top">
+          <span className="notice-tag" style={{ background: tagStyle.bg, color: tagStyle.color }}>{notice.tag}</span>
+          {notice.imageUrl && <span className="notice-has-img">🖼</span>}
+          {notice.link && <span className="notice-has-img">🔗</span>}
         </div>
-        <span style={s.cardTitle}>{notice.title}</span>
-        <span style={s.cardMeta}>{notice.authorName} · {date}</span>
+        <span className="notice-card-title">{notice.title}</span>
+        <span className="notice-card-meta">{notice.authorName} · {date}</span>
       </div>
-      <span style={s.cardNum}>#{num}</span>
+      <span className="notice-card-num">#{num}</span>
     </div>
   );
 }
 
-// ── 작성 모달 ─────────────────────────────────────────────
 function WriteModal({ user, onClose, onSubmitted }) {
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
@@ -248,26 +229,24 @@ function WriteModal({ user, onClose, onSubmitted }) {
   };
 
   return (
-    <div style={s.overlay} onClick={onClose}>
-      <div style={{ ...s.modal, maxWidth: 580 }} onClick={e => e.stopPropagation()}>
-        <div style={s.modalHeader}>
-          <h3 style={s.modalTitle}>공지 작성</h3>
-          <button style={s.closeBtn} onClick={onClose}>✕</button>
+    <div className="notices-overlay" onClick={onClose}>
+      <div className="notices-modal" onClick={e => e.stopPropagation()}>
+        <div className="notices-modal-header">
+          <h3 className="notices-modal-title">공지 작성</h3>
+          <button className="notices-close-btn" onClick={onClose}>✕</button>
         </div>
 
-        {/* 태그 */}
-        <div style={s.field}>
-          <label style={s.label}>태그</label>
-          <div style={s.tagGrid}>
+        <div className="notices-field">
+          <label className="notices-label">태그</label>
+          <div className="notices-tag-grid">
             {TAGS.filter(t => t !== "전체").map(t => {
               const ts = TAG_COLORS[t];
+              const isActive = tag === t;
               return (
                 <button
                   key={t}
-                  style={{
-                    ...s.tagSelectBtn,
-                    ...(tag === t ? { background: ts.bg, color: ts.color, borderColor: ts.color } : {}),
-                  }}
+                  className={`notices-tag-select-btn ${isActive ? "active" : ""}`}
+                  style={isActive ? { background: ts.bg, color: ts.color, borderColor: ts.color } : {}}
                   onClick={() => setTag(t)}
                 >{t}</button>
               );
@@ -275,144 +254,69 @@ function WriteModal({ user, onClose, onSubmitted }) {
           </div>
         </div>
 
-        {/* 제목 */}
-        <div style={s.field}>
-          <label style={s.label}>제목</label>
-          <input style={s.input} placeholder="공지 제목" value={title} onChange={e => setTitle(e.target.value)} />
+        <div className="notices-field">
+          <label className="notices-label">제목</label>
+          <input className="notices-input" placeholder="공지 제목" value={title} onChange={e => setTitle(e.target.value)} />
         </div>
 
-        {/* 내용 */}
-        <div style={s.field}>
-          <label style={s.label}>내용</label>
-          <textarea
-            style={{ ...s.input, minHeight: 140, resize: "vertical" }}
-            placeholder="공지 내용을 입력하세요."
-            value={content}
-            onChange={e => setContent(e.target.value)}
-          />
+        <div className="notices-field">
+          <label className="notices-label">내용</label>
+          <textarea className="notices-input notices-textarea" placeholder="공지 내용을 입력하세요." value={content} onChange={e => setContent(e.target.value)} />
         </div>
 
-        {/* 이미지 URL */}
-        <div style={s.field}>
-          <label style={s.label}>이미지 URL <span style={s.optional}>(선택)</span></label>
-          <input style={s.input} placeholder="https://..." value={imageUrl} onChange={e => setImageUrl(e.target.value)} />
+        <div className="notices-field">
+          <label className="notices-label">이미지 URL <span className="notices-optional">(선택)</span></label>
+          <input className="notices-input" placeholder="https://..." value={imageUrl} onChange={e => setImageUrl(e.target.value)} />
         </div>
 
-        {/* 링크 */}
-        <div style={s.field}>
-          <label style={s.label}>링크 <span style={s.optional}>(선택)</span></label>
-          <input style={s.input} placeholder="https://..." value={link} onChange={e => setLink(e.target.value)} />
+        <div className="notices-field">
+          <label className="notices-label">링크 <span className="notices-optional">(선택)</span></label>
+          <input className="notices-input" placeholder="https://..." value={link} onChange={e => setLink(e.target.value)} />
         </div>
 
-        {error && <div style={s.errorMsg}>{error}</div>}
-        <button
-          style={{ ...s.primaryBtn, ...(submitting ? s.btnDisabled : {}) }}
-          onClick={handleSubmit}
-          disabled={submitting}
-        >{submitting ? "저장 중..." : "✓ 게시하기"}</button>
+        {error && <div className="notices-error-msg">{error}</div>}
+        <button className="notices-primary-btn" onClick={handleSubmit} disabled={submitting}>
+          {submitting ? "저장 중..." : "✓ 게시하기"}
+        </button>
       </div>
     </div>
   );
 }
 
-// ── 상세 모달 ─────────────────────────────────────────────
 function DetailModal({ notice, isAdmin, onDelete, onClose }) {
-  const tagStyle = TAG_COLORS[notice.tag] || { bg: "#1a2032", color: "#6b7494" };
+  const tagStyle = TAG_COLORS[notice.tag] || { bg: "var(--surface)", color: "var(--text-sub)" };
   const date = notice.createdAt?.toDate?.()?.toLocaleString("ko-KR") || "";
 
   return (
-    <div style={s.overlay} onClick={onClose}>
-      <div style={{ ...s.modal, maxWidth: 620 }} onClick={e => e.stopPropagation()}>
-        <div style={s.modalHeader}>
+    <div className="notices-overlay" onClick={onClose}>
+      <div className="notices-modal notices-modal-detail" onClick={e => e.stopPropagation()}>
+        <div className="notices-modal-header">
           <div style={{ flex: 1 }}>
-            <span style={{ ...s.tag, background: tagStyle.bg, color: tagStyle.color, marginBottom: 10, display: "inline-block" }}>
-              {notice.tag}
-            </span>
-            <h3 style={{ ...s.modalTitle, marginTop: 6, fontSize: 20 }}>{notice.title}</h3>
-            <span style={s.detailMeta}>{notice.authorName} · {date}</span>
+            <span className="notice-tag" style={{ background: tagStyle.bg, color: tagStyle.color }}>{notice.tag}</span>
+            <h3 className="notices-modal-title" style={{ marginTop: 8 }}>{notice.title}</h3>
+            <span className="notices-detail-meta">{notice.authorName} · {date}</span>
           </div>
-          <button style={s.closeBtn} onClick={onClose}>✕</button>
+          <button className="notices-close-btn" onClick={onClose}>✕</button>
         </div>
 
-        {/* 이미지 */}
         {notice.imageUrl && (
-          <img
-            src={notice.imageUrl}
-            alt=""
-            style={s.detailImg}
-            onError={e => e.target.style.display = "none"}
-          />
+          <img src={notice.imageUrl} alt="" className="notices-detail-img" onError={e => e.target.style.display = "none"} />
         )}
 
-        {/* 내용 */}
-        <div style={s.detailContent}>{notice.content}</div>
+        <div className="notices-detail-content">{notice.content}</div>
 
-        {/* 링크 */}
         {notice.link && (
-          <a href={notice.link} target="_blank" rel="noopener noreferrer" style={s.detailLink}>
+          <a href={notice.link} target="_blank" rel="noopener noreferrer" className="notices-detail-link">
             🔗 관련 링크 바로가기 →
           </a>
         )}
 
-        {/* 관리자 삭제 */}
         {isAdmin && (
-          <div style={{ marginTop: 20, paddingTop: 16, borderTop: "1px solid #1e2535" }}>
-            <button style={s.deleteBtn} onClick={onDelete}>🗑 공지 삭제</button>
+          <div className="notices-admin-actions">
+            <button className="notices-delete-btn" onClick={onDelete}>🗑 공지 삭제</button>
           </div>
         )}
       </div>
     </div>
   );
 }
-
-// ── 스타일 ────────────────────────────────────────────────
-const s = {
-  container: { maxWidth: 800, margin: "0 auto", padding: "0 0 60px", fontFamily: "'Noto Sans KR', sans-serif" },
-  header: { display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 24 },
-  title: { fontSize: 28, fontWeight: 700, color: "#e8eaf2", marginBottom: 6 },
-  subtitle: { fontSize: 14, color: "#6b7494" },
-  writeBtn: { background: "#4f8ef7", border: "none", color: "#fff", padding: "9px 18px", borderRadius: 10, cursor: "pointer", fontSize: 14, fontFamily: "'Noto Sans KR', sans-serif", flexShrink: 0 },
-
-  tagRow: { display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 20 },
-  tagBtn: { background: "#1a2032", border: "1px solid #1e2535", color: "#6b7494", padding: "5px 14px", borderRadius: 20, cursor: "pointer", fontSize: 13, fontFamily: "'Noto Sans KR', sans-serif", transition: "all 0.15s" },
-  tagBtnActive: { background: "rgba(79,142,247,0.15)", color: "#4f8ef7", borderColor: "#4f8ef7" },
-
-  empty: { textAlign: "center", color: "#3d4461", padding: "60px 0", fontSize: 14 },
-
-  list: { display: "flex", flexDirection: "column", gap: 6 },
-  card: { background: "#161b27", border: "1px solid #1e2535", borderRadius: 12, padding: "16px 20px", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, transition: "border-color 0.2s, background 0.2s" },
-  cardLeft: { flex: 1, minWidth: 0 },
-  cardTop: { display: "flex", alignItems: "center", gap: 8, marginBottom: 6 },
-  tag: { fontSize: 11, padding: "2px 10px", borderRadius: 20, fontWeight: 600 },
-  hasImg: { fontSize: 13 },
-  cardTitle: { display: "block", fontSize: 15, fontWeight: 600, color: "#e8eaf2", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", marginBottom: 4 },
-  cardMeta: { fontSize: 12, color: "#6b7494" },
-  cardNum: { fontSize: 11, color: "#3d4461", fontFamily: "monospace", flexShrink: 0 },
-
-  pagination: { display: "flex", justifyContent: "center", gap: 6, marginTop: 28 },
-  pageBtn: { background: "#1a2032", border: "1px solid #1e2535", color: "#6b7494", width: 36, height: 36, borderRadius: 8, cursor: "pointer", fontSize: 14, fontFamily: "monospace", transition: "all 0.15s" },
-  pageBtnActive: { background: "rgba(79,142,247,0.15)", color: "#4f8ef7", borderColor: "#4f8ef7" },
-
-  overlay: { position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)", zIndex: 300, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 },
-  modal: { background: "#161b27", border: "1px solid #1e2535", borderRadius: 16, padding: 28, width: "100%", maxHeight: "90vh", overflowY: "auto" },
-  modalHeader: { display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 20, gap: 12 },
-  modalTitle: { fontSize: 18, fontWeight: 700, color: "#e8eaf2", margin: 0 },
-  closeBtn: { background: "none", border: "none", color: "#6b7494", fontSize: 20, cursor: "pointer", flexShrink: 0 },
-
-  field: { marginBottom: 16 },
-  label: { display: "block", fontSize: 12, color: "#6b7494", marginBottom: 7, fontWeight: 500 },
-  optional: { color: "#3d4461", fontWeight: 400 },
-  input: { width: "100%", background: "#0f1117", border: "1px solid #1e2535", borderRadius: 8, padding: "10px 14px", color: "#e8eaf2", fontSize: 14, fontFamily: "'Noto Sans KR', sans-serif", outline: "none", boxSizing: "border-box" },
-  tagGrid: { display: "flex", flexWrap: "wrap", gap: 6 },
-  tagSelectBtn: { background: "#0f1117", border: "1px solid #1e2535", color: "#6b7494", padding: "5px 14px", borderRadius: 20, cursor: "pointer", fontSize: 13, fontFamily: "'Noto Sans KR', sans-serif", transition: "all 0.15s" },
-
-  errorMsg: { background: "rgba(248,113,113,0.1)", border: "1px solid rgba(248,113,113,0.3)", color: "#f87171", borderRadius: 8, padding: "8px 12px", fontSize: 13, marginBottom: 14 },
-  primaryBtn: { width: "100%", background: "#4f8ef7", border: "none", color: "#fff", padding: "12px", borderRadius: 10, fontSize: 15, fontWeight: 600, cursor: "pointer", fontFamily: "'Noto Sans KR', sans-serif" },
-  btnDisabled: { opacity: 0.5, cursor: "not-allowed" },
-
-  detailMeta: { fontSize: 12, color: "#6b7494", display: "block", marginTop: 4 },
-  detailImg: { width: "100%", borderRadius: 10, marginBottom: 16, maxHeight: 400, objectFit: "cover" },
-  detailContent: { fontSize: 15, color: "#c8cad8", lineHeight: 1.8, whiteSpace: "pre-wrap", marginBottom: 16 },
-  detailLink: { display: "inline-block", color: "#4f8ef7", fontSize: 14, textDecoration: "none", background: "rgba(79,142,247,0.1)", padding: "8px 16px", borderRadius: 8, border: "1px solid rgba(79,142,247,0.3)" },
-  deleteBtn: { background: "rgba(248,113,113,0.1)", border: "1px solid rgba(248,113,113,0.3)", color: "#f87171", padding: "8px 16px", borderRadius: 8, cursor: "pointer", fontSize: 13, fontFamily: "'Noto Sans KR', sans-serif" },
-};

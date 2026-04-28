@@ -1,0 +1,54 @@
+.tt-container { max-width: 900px; padding-bottom: 60px; }
+.tt-header { margin-bottom: 28px; }
+.tt-title { font-size: 28px; font-weight: 700; color: var(--text); margin-bottom: 6px; }
+.tt-subtitle { font-size: 14px; color: var(--text-sub); }
+
+.tt-tabs { display: flex; gap: 4px; margin-bottom: 24px; border-bottom: 1px solid var(--sidebar-border); }
+.tt-tab { background: none; border: none; color: var(--text-sub); font-size: 14px; padding: 10px 16px; cursor: pointer; border-bottom: 2px solid transparent; font-family: 'Noto Sans KR', sans-serif; transition: color 0.2s; }
+.tt-tab.active { color: var(--accent); border-bottom-color: var(--accent); font-weight: 600; }
+
+.tt-selector-row { display: flex; align-items: center; gap: 24px; margin-bottom: 20px; flex-wrap: wrap; }
+.tt-selector-group { display: flex; align-items: center; gap: 10px; }
+.tt-selector-label { font-size: 13px; color: var(--text-sub); flex-shrink: 0; }
+.tt-btn-group { display: flex; gap: 4px; flex-wrap: wrap; }
+.tt-selector-btn { background: var(--surface); border: 1px solid var(--sidebar-border); color: var(--text-sub); padding: 5px 12px; border-radius: 8px; cursor: pointer; font-size: 13px; font-family: 'Noto Sans KR', sans-serif; transition: all 0.15s; }
+.tt-selector-btn.active { background: var(--accent-glow); border-color: var(--accent); color: var(--accent); }
+
+.tt-edit-btn { background: var(--accent); border: none; color: #fff; padding: 7px 16px; border-radius: 8px; cursor: pointer; font-size: 13px; font-family: 'Noto Sans KR', sans-serif; }
+.tt-cancel-btn { background: var(--surface); border: 1px solid var(--sidebar-border); color: var(--text); padding: 7px 16px; border-radius: 8px; cursor: pointer; font-size: 13px; font-family: 'Noto Sans KR', sans-serif; }
+.tt-save-btn-green { background: #4ade80; border: none; color: #0f1117; padding: 7px 16px; border-radius: 8px; cursor: pointer; font-size: 13px; font-weight: 600; font-family: 'Noto Sans KR', sans-serif; }
+
+.tt-personal-header { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
+.tt-personal-note { font-size: 13px; color: var(--text-sub); }
+.tt-saving-badge { font-size: 11px; color: var(--accent); background: var(--accent-glow); padding: 3px 10px; border-radius: 20px; }
+
+.tt-loading { text-align: center; color: var(--text-muted); padding: 60px 0; font-size: 14px; }
+
+.tt-grid-wrap { overflow-x: auto; }
+.tt-table { width: 100%; border-collapse: collapse; min-width: 500px; }
+.tt-th-period { width: 60px; padding: 10px 8px; font-size: 11px; color: var(--text-muted); text-align: center; border-bottom: 1px solid var(--sidebar-border); }
+.tt-th-day { padding: 10px 8px; font-size: 14px; font-weight: 600; color: var(--text); text-align: center; border-bottom: 1px solid var(--sidebar-border); width: calc(100% / 5); }
+.tt-td-period { padding: 4px 8px; font-size: 11px; color: var(--text-muted); text-align: center; font-family: monospace; border-bottom: 1px solid var(--sidebar-border); vertical-align: middle; }
+.tt-td { padding: 8px 10px; border-bottom: 1px solid var(--sidebar-border); border-left: 3px solid transparent; vertical-align: middle; min-height: 52px; height: 52px; position: relative; transition: background 0.15s; }
+.tt-td.clickable { cursor: pointer; }
+.tt-td.clickable:hover { background: var(--surface-hover); }
+.tt-td-edit { padding: 4px 6px; border-bottom: 1px solid var(--sidebar-border); vertical-align: middle; }
+.tt-cell-subject { display: block; font-size: 13px; font-weight: 600; line-height: 1.3; }
+.tt-cell-teacher { display: block; font-size: 11px; color: var(--text-sub); margin-top: 2px; }
+.tt-cell-empty { color: var(--text-muted); font-size: 18px; display: flex; align-items: center; justify-content: center; height: 100%; }
+.tt-cell-edit-input { width: 100%; background: var(--bg); border: 1px solid var(--sidebar-border); border-radius: 4px; padding: 4px 6px; color: var(--text); font-size: 12px; font-family: 'Noto Sans KR', sans-serif; outline: none; box-sizing: border-box; }
+.tt-cell-edit-input-sm { font-size: 10px; margin-top: 2px; color: var(--text-sub); }
+
+.tt-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 300; display: flex; align-items: center; justify-content: center; }
+.tt-cell-modal { background: var(--sidebar-bg); border: 1px solid var(--sidebar-border); border-radius: 14px; padding: 24px; width: 300px; }
+.tt-cell-modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px; }
+.tt-cell-modal-title { font-size: 15px; font-weight: 600; color: var(--text); }
+.tt-close-btn { background: none; border: none; color: var(--text-sub); font-size: 18px; cursor: pointer; }
+.tt-field { margin-bottom: 14px; }
+.tt-field-label { display: block; font-size: 12px; color: var(--text-sub); margin-bottom: 6px; }
+.tt-optional { color: var(--text-muted); }
+.tt-field-input { width: 100%; background: var(--bg); border: 1px solid var(--sidebar-border); border-radius: 8px; padding: 9px 12px; color: var(--text); font-size: 14px; font-family: 'Noto Sans KR', sans-serif; outline: none; box-sizing: border-box; }
+.tt-field-input:focus { border-color: var(--accent); }
+.tt-btn-row { display: flex; gap: 8px; margin-top: 4px; }
+.tt-clear-btn { flex: 1; background: rgba(248,113,113,0.1); border: 1px solid rgba(248,113,113,0.3); color: #f87171; padding: 9px; border-radius: 8px; cursor: pointer; font-size: 13px; font-family: 'Noto Sans KR', sans-serif; }
+.tt-save-btn { flex: 2; background: var(--accent); border: none; color: #fff; padding: 9px; border-radius: 8px; cursor: pointer; font-size: 14px; font-weight: 600; font-family: 'Noto Sans KR', sans-serif; }
