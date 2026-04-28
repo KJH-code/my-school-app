@@ -41,32 +41,66 @@ export default function Agenda({ user }) {
   useEffect(() => { fetchPosts(); }, []);
 
   const handleVote = async (postId, type) => {
+    if (!user?.uid) return;
     const voteId = `${user?.uid}_${postId}`;
     const voteRef = doc(db, "agenda_votes", voteId);
     const postRef = doc(db, "agenda_posts", postId);
     const current = myVotes[postId];
 
+    // 같은 버튼 또 누르면 무시 (연타 방지)
+    // 단, 다른 버튼으로 바꾸는 건 허용
+
+    // 1. 화면부터 즉시 업데이트 (optimistic)
+    const prevVotes = myVotes;
+    const prevPosts = posts;
+
     if (current === type) {
-      await deleteDoc(voteRef);
-      await updateDoc(postRef, { [`votes.${type}`]: increment(-1) });
+      // 취소
       setMyVotes((v) => { const n = { ...v }; delete n[postId]; return n; });
       setPosts((p) => p.map((post) => post.id === postId
-        ? { ...post, votes: { ...post.votes, [type]: (post.votes?.[type] || 1) - 1 } } : post));
+        ? { ...post, votes: { ...post.votes, [type]: Math.max(0, (post.votes?.[type] || 1) - 1) } }
+        : post));
+    } else if (current) {
+      // 의견 바꿈
+      setMyVotes((v) => ({ ...v, [postId]: type }));
+      setPosts((p) => p.map((post) => post.id === postId
+        ? { ...post, votes: {
+            ...post.votes,
+            [current]: Math.max(0, (post.votes?.[current] || 1) - 1),
+            [type]: (post.votes?.[type] || 0) + 1
+          } }
+        : post));
     } else {
-      if (current) {
-        await updateDoc(postRef, { [`votes.${current}`]: increment(-1), [`votes.${type}`]: increment(1) });
-        setPosts((p) => p.map((post) => post.id === postId
-          ? { ...post, votes: { ...post.votes, [current]: (post.votes?.[current] || 1) - 1, [type]: (post.votes?.[type] || 0) + 1 } } : post));
+      // 새로 투표
+      setMyVotes((v) => ({ ...v, [postId]: type }));
+      setPosts((p) => p.map((post) => post.id === postId
+        ? { ...post, votes: { ...post.votes, [type]: (post.votes?.[type] || 0) + 1 } }
+        : post));
+    }
+
+    // 2. 서버 작업은 백그라운드에서
+    try {
+      if (current === type) {
+        await deleteDoc(voteRef);
+        await updateDoc(postRef, { [`votes.${type}`]: increment(-1) });
+      } else if (current) {
+        await updateDoc(postRef, {
+          [`votes.${current}`]: increment(-1),
+          [`votes.${type}`]: increment(1)
+        });
+        await setDoc(voteRef, { userId: user?.uid, postId, type });
       } else {
         await updateDoc(postRef, { [`votes.${type}`]: increment(1) });
-        setPosts((p) => p.map((post) => post.id === postId
-          ? { ...post, votes: { ...post.votes, [type]: (post.votes?.[type] || 0) + 1 } } : post));
+        await setDoc(voteRef, { userId: user?.uid, postId, type });
       }
-      await setDoc(voteRef, { userId: user?.uid, postId, type });
-      setMyVotes((v) => ({ ...v, [postId]: type }));
+    } catch (e) {
+      // 서버 실패하면 화면 되돌리기
+      console.error("투표 실패", e);
+      setMyVotes(prevVotes);
+      setPosts(prevPosts);
+      alert("투표에 실패했어요. 다시 시도해주세요.");
     }
   };
-
   const handleReport = async (postId) => {
     if (myReports[postId]) return;
     const reportId = `${user?.uid}_${postId}`;
