@@ -1,5 +1,5 @@
 import { signInWithPopup, signOut, onAuthStateChanged, GoogleAuthProvider } from "firebase/auth";
-import { auth, provider } from "./firebase";
+import { auth, provider, saveSheetsToken } from "./firebase";
 import { useState, useEffect } from "react";
 import Sidebar from "./Sidebar";
 import "./App.css";
@@ -40,11 +40,11 @@ export const requireLogin = async () => {
     const result = await signInWithPopup(auth, provider);
     const credential = GoogleAuthProvider.credentialFromResult(result);
     if (credential?.accessToken) {
-      sessionStorage.setItem("sheets_token", credential.accessToken);
+      saveSheetsToken(credential.accessToken);  // ← 이거로 변경
     }
     return result.user;
   } catch (e) {
-    console.error("로그인 취소 또는 실패", e);
+    console.error("로그인 실패", e);
     return null;
   }
 };

@@ -1,13 +1,12 @@
 import { useState, useEffect } from "react";
-import { auth, fetchWithAuth } from "./firebase";
 import "./Volunteer.css";
-
+import { auth, fetchWithAuth, getSheetsToken } from "./firebase";
 const SHEET_ID = "18HD1FjfHoNiR6rxgmDPc3wJF-8a6Fs2lFCLYsYWrWe4";
 const SHEET_NAME = "입력시트";
 
 function getReadUrl(sheetName) {
   const encoded = encodeURIComponent(sheetName);
-  const token = sessionStorage.getItem("sheets_token");
+  const token = getSheetsToken();
   return `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/${encoded}?access_token=${token}`;
 }
 
@@ -34,7 +33,7 @@ export default function Volunteer() {
     setSubmitting(true);
     setSubmitMsg("");
     try {
-      const token = sessionStorage.getItem("sheets_token");
+      const token = getSheetsToken();
       
       // 시트 마지막 빈 행 찾기
       const allData = data;
@@ -77,7 +76,7 @@ export default function Volunteer() {
     setLoading(true);
     setError(null);
     try {
-      const token = sessionStorage.getItem("sheets_token");
+      const token = getSheetsToken();
       if (!token) {
         setError("시트 접근 권한이 없어요. 로그아웃 후 다시 로그인해주세요.");
         setLoading(false);
@@ -97,8 +96,15 @@ export default function Volunteer() {
 
   useEffect(() => {
     fetchData();
-    const interval = setInterval(fetchData, 30 * 1000);
-    return () => clearInterval(interval);
+    const handleVisibility = () => {
+      if (!document.hidden) fetchData();
+    };
+    window.addEventListener("focus", fetchData);
+    document.addEventListener("visibilitychange", handleVisibility);
+    return () => {
+      window.removeEventListener("focus", fetchData);
+      document.removeEventListener("visibilitychange", handleVisibility);
+    };
   }, []);
 
   // 행 데이터: A=연번, C=학번, D=이름, E=연락처, F=희망일, G=희망시간대, H=집합장소, I=지도교사, J=봉사내용, K=완료확인

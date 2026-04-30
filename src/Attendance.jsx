@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
-import { auth, fetchWithAuth, refreshSheetsToken } from "./firebase";
 import "./Attendance.css";
-
+import { auth, fetchWithAuth, getSheetsToken } from "./firebase";
 const SHEET_ID = "1pk3xJdqa2y9xDR2B7LcdvcmwCt-mlE95upEC6mIObwc";
 const SHEET_NAME = "학생 신청";
 
@@ -27,7 +26,7 @@ const CAPACITY = {
 
 function getReadUrl(sheetName) {
   const encoded = encodeURIComponent(sheetName);
-  const token = sessionStorage.getItem("sheets_token");
+  const token = getSheetsToken();
   return `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/${encoded}?access_token=${token}`;
 }
 
@@ -54,7 +53,7 @@ export default function Attendance() {
     setLoading(true);
     setError(null);
     try {
-      const token = sessionStorage.getItem("sheets_token");
+      const token = getSheetsToken();
       if (!token) {
         setError("시트 접근 권한이 없어요. 로그아웃 후 다시 로그인해주세요.");
         setLoading(false);
@@ -95,8 +94,15 @@ export default function Attendance() {
 
   useEffect(() => {
     fetchData();
-    const interval = setInterval(fetchData, 30 * 1000);
-    return () => clearInterval(interval);
+    const handleVisibility = () => {
+      if (!document.hidden) fetchData();
+    };
+    window.addEventListener("focus", fetchData);
+    document.addEventListener("visibilitychange", handleVisibility);
+    return () => {
+      window.removeEventListener("focus", fetchData);
+      document.removeEventListener("visibilitychange", handleVisibility);
+    };
   }, []);
 
   const handleSubmit = async () => {
@@ -104,7 +110,7 @@ export default function Attendance() {
     if (!myRow) { setSubmitMsg("내 학번을 시트에서 찾을 수 없어요."); return; }
     setSubmitting(true);
     setSubmitMsg("");
-    const token = sessionStorage.getItem("sheets_token");
+    const token = getSheetsToken();
     const sheetRow = myRow.index + 1;
     try {
       const requests = [];
