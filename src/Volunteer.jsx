@@ -1,12 +1,18 @@
 import { useState, useEffect } from "react";
 import "./Volunteer.css";
-import { auth, fetchWithAuth, getSheetsToken } from "./firebase";
+import { auth, fetchWithAuth, getSheetsToken, refreshSheetsToken } from "./firebase";
 const SHEET_ID = "18HD1FjfHoNiR6rxgmDPc3wJF-8a6Fs2lFCLYsYWrWe4";
 const SHEET_NAME = "입력시트";
 
-function getReadUrl(sheetName) {
+// 토큰 가져오기 (없으면 자동 갱신)
+async function ensureToken() {
+  let token = getSheetsToken();
+  if (!token) token = await refreshSheetsToken();
+  return token;
+}
+
+function getReadUrl(sheetName, token) {
   const encoded = encodeURIComponent(sheetName);
-  const token = getSheetsToken();
   return `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/${encoded}?access_token=${token}`;
 }
 
@@ -25,6 +31,7 @@ export default function Volunteer() {
   const [lastUpdated, setLastUpdated] = useState(null);
 
   const studentId = auth.currentUser?.displayName?.match(/^[0-9]+/)?.[0] || "";
+
   const handleSubmit = async () => {
     if (!form.phone || !form.date || !form.time) {
       setSubmitMsg("모든 필드를 입력해주세요.");
@@ -33,20 +40,25 @@ export default function Volunteer() {
     setSubmitting(true);
     setSubmitMsg("");
     try {
-      const token = getSheetsToken();
-      
+      const token = await ensureToken();
+      if (!token) {
+        setSubmitMsg("❌ 로그인이 필요해요.");
+        setSubmitting(false);
+        return;
+      }
+
       // 시트 마지막 빈 행 찾기
       const allData = data;
       let nextRow = allData.length + 1; // 1-indexed
-      
+
       // "4/27" 형식으로 변환
       const dateObj = new Date(form.date);
       const dateStr = `${dateObj.getMonth() + 1}/${dateObj.getDate()}`;
-      
+
       // C~G에 한 번에 쓰기
       const range = `${SHEET_NAME}!C${nextRow}:G${nextRow}`;
       const url = `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/${encodeURIComponent(range)}?valueInputOption=USER_ENTERED&access_token=${token}`;
-      
+
       const res = await fetchWithAuth(url, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
@@ -54,7 +66,7 @@ export default function Volunteer() {
           values: [[studentId, studentName, form.phone, dateStr, form.time]]
         }),
       });
-      
+
       if (res.ok) {
         setSubmitMsg("✅ 신청 완료!");
         setTimeout(() => {
@@ -72,17 +84,18 @@ export default function Volunteer() {
       setSubmitting(false);
     }
   };
+
   const fetchData = async () => {
     setLoading(true);
     setError(null);
     try {
-      const token = getSheetsToken();
+      const token = await ensureToken();
       if (!token) {
         setError("시트 접근 권한이 없어요. 로그아웃 후 다시 로그인해주세요.");
         setLoading(false);
         return;
       }
-      const res = await fetchWithAuth(getReadUrl(SHEET_NAME));
+      const res = await fetchWithAuth(getReadUrl(SHEET_NAME, token));
       if (!res.ok) throw new Error("시트를 불러올 수 없어요.");
       const json = await res.json();
       setData(json.values || []);
@@ -93,7 +106,7 @@ export default function Volunteer() {
       setLoading(false);
     }
   };
-  
+
   useEffect(() => {
     fetchData();
     const handleVisibility = () => {
@@ -112,13 +125,13 @@ export default function Volunteer() {
   // 오늘 날짜를 M/D 형식으로
 const allRows = (() => {
   const all = data.slice(4).filter((row) => row[2] || row[3]);
-  
+
   const todayObj = new Date();
   const todayMD = `${todayObj.getMonth() + 1}/${todayObj.getDate()}`;
-  
+
   const todayIdx = all.findIndex((row) => row[5] === todayMD);
   const sliced = todayIdx >= 0 ? all.slice(todayIdx) : all;
-  
+
   // 날짜순 정렬 ("4/27", "2026. 4. 27" 같은 다양한 형식 처리)
   const parseDate = (str) => {
     if (!str) return new Date(9999, 0, 1); // 빈 값은 맨 뒤로
@@ -130,7 +143,7 @@ const allRows = (() => {
     if (shortMatch) return new Date(todayObj.getFullYear(), parseInt(shortMatch[1]) - 1, parseInt(shortMatch[2]));
     return new Date(9999, 0, 1);
   };
-  
+
   return [...sliced].sort((a, b) => parseDate(a[5]) - parseDate(b[5]));
 })();
 const myRows = allRows.filter((row) => row[2] === studentId);

@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import "./Attendance.css";
-import { auth, fetchWithAuth, getSheetsToken } from "./firebase";
+import { auth, fetchWithAuth, getSheetsToken, refreshSheetsToken } from "./firebase";
 const SHEET_ID = "1pk3xJdqa2y9xDR2B7LcdvcmwCt-mlE95upEC6mIObwc";
 const SHEET_NAME = "학생 신청";
 
@@ -24,9 +24,15 @@ const CAPACITY = {
   "대회의실": 30, "세미나실1": 5, "세미나실2": 5, "세미나실3": 5, "세미나실4": 5,
 };
 
-function getReadUrl(sheetName) {
+// 토큰 가져오기 (없으면 자동 갱신)
+async function ensureToken() {
+  let token = getSheetsToken();
+  if (!token) token = await refreshSheetsToken();
+  return token;
+}
+
+function getReadUrl(sheetName, token) {
   const encoded = encodeURIComponent(sheetName);
-  const token = getSheetsToken();
   return `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/${encoded}?access_token=${token}`;
 }
 
@@ -47,20 +53,27 @@ export default function Attendance() {
   const [filterGrade, setFilterGrade] = useState("");
   const [filterClass, setFilterClass] = useState("");
 
+  // 외출 신청 관련 state
+  const [showOutingModal, setShowOutingModal] = useState(false);
+  const [outingForm, setOutingForm] = useState({ leaveTime: "", returnTime: "" });
+  const [outingSubmitting, setOutingSubmitting] = useState(false);
+  const [outingMsg, setOutingMsg] = useState("");
+
   const studentId = auth.currentUser?.displayName?.match(/^[0-9]+/)?.[0] || "";
+  const studentName = auth.currentUser?.displayName?.replace(/^[0-9]+/, "") || "";
 
   const fetchData = async () => {
     setLoading(true);
     setError(null);
     try {
-      const token = getSheetsToken();
+      const token = await ensureToken();
       if (!token) {
         setError("시트 접근 권한이 없어요. 로그아웃 후 다시 로그인해주세요.");
         setLoading(false);
         return;
       }
 
-      const sRes = await fetchWithAuth(getReadUrl("학생 신청"));
+      const sRes = await fetchWithAuth(getReadUrl("학생 신청", token));
       if (!sRes.ok) throw new Error("시트를 불러올 수 없어요.");
       const sJson = await sRes.json();
       const values = sJson.values || [];
@@ -81,7 +94,7 @@ export default function Attendance() {
         setMyRow({ index: rowIndex, data: values[rowIndex] });
         setForm({ loc1: values[rowIndex][2] || "", loc2: values[rowIndex][5] || "" });
       }
-      const oRes = await fetchWithAuth(getReadUrl("외출 신청"));
+      const oRes = await fetchWithAuth(getReadUrl("외출 신청", token));
       const oJson = await oRes.json();
       setOutingData(oJson.values || []);
       setLastUpdated(new Date());
@@ -110,7 +123,12 @@ export default function Attendance() {
     if (!myRow) { setSubmitMsg("내 학번을 시트에서 찾을 수 없어요."); return; }
     setSubmitting(true);
     setSubmitMsg("");
-    const token = getSheetsToken();
+    const token = await ensureToken();
+    if (!token) {
+      setSubmitMsg("❌ 로그인이 필요해요.");
+      setSubmitting(false);
+      return;
+    }
     const sheetRow = myRow.index + 1;
     try {
       const requests = [];
@@ -137,6 +155,58 @@ export default function Attendance() {
     }
   };
 
+  const handleOutingSubmit = async () => {
+    if (!outingForm.leaveTime || !outingForm.returnTime) {
+      setOutingMsg("나가는 시각과 들어오는 시각을 모두 입력해줘!");
+      return;
+    }
+    setOutingSubmitting(true);
+    setOutingMsg("");
+    try {
+      const token = await ensureToken();
+      if (!token) {
+        setOutingMsg("❌ 로그인이 필요해요.");
+        setOutingSubmitting(false);
+        return;
+      }
+
+      // 외출 시트 다음 빈 행 — 헤더 4행이므로 최소 5행부터
+      const nextRow = Math.max(5, outingData.length + 1);
+
+      // 오늘 날짜 "2026. 5. 6" 형식
+      const today = new Date();
+      const dateStr = `${today.getFullYear()}. ${today.getMonth() + 1}. ${today.getDate()}`;
+
+      // B~F에 한 번에 쓰기 (학번, 이름, 신청일, 나가는 시각, 들어오는 시각)
+      const range = `외출 신청!B${nextRow}:F${nextRow}`;
+      const url = `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/${encodeURIComponent(range)}?valueInputOption=USER_ENTERED&access_token=${token}`;
+
+      const res = await fetchWithAuth(url, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          values: [[studentId, studentName, dateStr, outingForm.leaveTime, outingForm.returnTime]]
+        }),
+      });
+
+      if (res.ok) {
+        setOutingMsg("✅ 신청 완료!");
+        setTimeout(() => {
+          setShowOutingModal(false);
+          setOutingMsg("");
+          setOutingForm({ leaveTime: "", returnTime: "" });
+          fetchData();
+        }, 1000);
+      } else {
+        setOutingMsg("❌ 오류 발생. 다시 시도해주세요.");
+      }
+    } catch (e) {
+      setOutingMsg("❌ " + e.message);
+    } finally {
+      setOutingSubmitting(false);
+    }
+  };
+
   return (
     <div className="attendance-wrap">
       <div className="attendance-header">
@@ -145,6 +215,7 @@ export default function Attendance() {
           {lastUpdated && <span className="last-updated">마지막 업데이트: {lastUpdated.toLocaleTimeString("ko-KR")}</span>}
           <button className="refresh-btn" onClick={fetchData}>↻ 새로고침</button>
           <button className="apply-btn" onClick={() => setShowModal(true)}>✏️ 이석 신청</button>
+          <button className="apply-btn" onClick={() => setShowOutingModal(true)}>🚪 외출 신청</button>
         </div>
       </div>
 
@@ -220,6 +291,43 @@ export default function Attendance() {
             <div className="modal-actions">
               <button className="modal-cancel" onClick={() => setShowModal(false)}>취소</button>
               <button className="modal-confirm" onClick={handleSubmit} disabled={submitting}>{submitting ? "신청 중..." : "신청하기"}</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showOutingModal && (
+        <div className="modal-overlay" onClick={() => setShowOutingModal(false)}>
+          <div className="modal-box" onClick={(e) => e.stopPropagation()}>
+            <h3 className="modal-title">🚪 외출 신청</h3>
+            <p className="modal-sub">학번 {studentId} · {studentName}</p>
+
+            <div className="modal-section">
+              <label className="modal-label">나가는 시각</label>
+              <input
+                type="time"
+                className="vol-input"
+                value={outingForm.leaveTime}
+                onChange={(e) => setOutingForm({ ...outingForm, leaveTime: e.target.value })}
+              />
+            </div>
+
+            <div className="modal-section">
+              <label className="modal-label">들어오는 시각</label>
+              <input
+                type="time"
+                className="vol-input"
+                value={outingForm.returnTime}
+                onChange={(e) => setOutingForm({ ...outingForm, returnTime: e.target.value })}
+              />
+            </div>
+
+            {outingMsg && <p className="submit-msg">{outingMsg}</p>}
+            <div className="modal-actions">
+              <button className="modal-cancel" onClick={() => setShowOutingModal(false)}>취소</button>
+              <button className="modal-confirm" onClick={handleOutingSubmit} disabled={outingSubmitting}>
+                {outingSubmitting ? "신청 중..." : "신청하기"}
+              </button>
             </div>
           </div>
         </div>
