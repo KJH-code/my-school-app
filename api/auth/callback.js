@@ -60,27 +60,29 @@ export default async function handler(req, res) {
 
     // displayName, photoURL 설정
     // displayName, photoURL 설정
+    // 사용자 찾기 (이메일로 먼저 — 기존 popup 흐름으로 만들어진 계정 호환)
+    let actualUid;
     try {
-      await adminAuth.getUser(uid);
-      // 존재함 → update
-      await adminAuth.updateUser(uid, {
+      const existingUser = await adminAuth.getUserByEmail(email);
+      actualUid = existingUser.uid;
+      // 정보 업데이트
+      await adminAuth.updateUser(actualUid, {
         displayName: payload.name,
         photoURL: payload.picture,
-        email,
         emailVerified: true,
       });
     } catch (err) {
       if (err.code === 'auth/user-not-found') {
-        // 없음 → create
-        await adminAuth.createUser({
-          uid,
+        // 새 사용자
+        const newUser = await adminAuth.createUser({
           email,
           emailVerified: true,
           displayName: payload.name,
           photoURL: payload.picture,
         });
+        actualUid = newUser.uid;
       } else {
-        console.error('User get/update failed:', err);
+        console.error('User lookup failed:', err);
         throw err;
       }
     }
