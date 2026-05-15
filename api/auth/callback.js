@@ -59,21 +59,28 @@ export default async function handler(req, res) {
     }, { merge: true });
 
     // displayName, photoURL 설정
+    // displayName, photoURL 설정
     try {
+      await adminAuth.getUser(uid);
+      // 존재함 → update
       await adminAuth.updateUser(uid, {
         displayName: payload.name,
         photoURL: payload.picture,
         email,
+        emailVerified: true,
       });
     } catch (err) {
       if (err.code === 'auth/user-not-found') {
+        // 없음 → create
         await adminAuth.createUser({
           uid,
           email,
+          emailVerified: true,
           displayName: payload.name,
           photoURL: payload.picture,
         });
       } else {
+        console.error('User get/update failed:', err);
         throw err;
       }
     }
