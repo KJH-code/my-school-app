@@ -1,20 +1,10 @@
 import { useState, useEffect } from "react";
 import "./Volunteer.css";
-import { auth, fetchWithAuth, getSheetsToken, refreshSheetsToken } from "./firebase";
+import { auth } from "./firebase";
+import { readSheet, writeSheet } from "./lib/api";
+
 const SHEET_ID = "18HD1FjfHoNiR6rxgmDPc3wJF-8a6Fs2lFCLYsYWrWe4";
 const SHEET_NAME = "입력시트";
-
-// 토큰 가져오기 (없으면 자동 갱신)
-async function ensureToken() {
-  let token = getSheetsToken();
-  if (!token) token = await refreshSheetsToken();
-  return token;
-}
-
-function getReadUrl(sheetName, token) {
-  const encoded = encodeURIComponent(sheetName);
-  return `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/${encoded}?access_token=${token}`;
-}
 
 export default function Volunteer() {
   const studentName = auth.currentUser?.displayName?.replace(/^[0-9]+/, "") || "";
@@ -40,44 +30,25 @@ export default function Volunteer() {
     setSubmitting(true);
     setSubmitMsg("");
     try {
-      const token = await ensureToken();
-      if (!token) {
-        setSubmitMsg("❌ 로그인이 필요해요.");
-        setSubmitting(false);
-        return;
-      }
-
-      // 시트 마지막 빈 행 찾기
-      const allData = data;
-      let nextRow = allData.length + 1; // 1-indexed
-
       // "4/27" 형식으로 변환
       const dateObj = new Date(form.date);
       const dateStr = `${dateObj.getMonth() + 1}/${dateObj.getDate()}`;
 
-      // C~G에 한 번에 쓰기
-      const range = `${SHEET_NAME}!C${nextRow}:G${nextRow}`;
-      const url = `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/${encodeURIComponent(range)}?valueInputOption=USER_ENTERED&access_token=${token}`;
-
-      const res = await fetchWithAuth(url, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          values: [[studentId, studentName, form.phone, dateStr, form.time]]
-        }),
+      // C~G 컬럼에 append (시트가 알아서 빈 행 찾음)
+      await writeSheet({
+        spreadsheetId: SHEET_ID,
+        range: `${SHEET_NAME}!C:G`,
+        values: [[studentId, studentName, form.phone, dateStr, form.time]],
+        mode: "append",
       });
 
-      if (res.ok) {
-        setSubmitMsg("✅ 신청 완료!");
-        setTimeout(() => {
-          setShowModal(false);
-          setSubmitMsg("");
-          setForm({ phone: "", date: "", time: "" });
-          fetchData();
-        }, 1000);
-      } else {
-        setSubmitMsg("❌ 오류 발생. 다시 시도해주세요.");
-      }
+      setSubmitMsg("✅ 신청 완료!");
+      setTimeout(() => {
+        setShowModal(false);
+        setSubmitMsg("");
+        setForm({ phone: "", date: "", time: "" });
+        fetchData();
+      }, 1000);
     } catch (e) {
       setSubmitMsg("❌ " + e.message);
     } finally {
@@ -89,15 +60,7 @@ export default function Volunteer() {
     setLoading(true);
     setError(null);
     try {
-      const token = await ensureToken();
-      if (!token) {
-        setError("시트 접근 권한이 없어요. 로그아웃 후 다시 로그인해주세요.");
-        setLoading(false);
-        return;
-      }
-      const res = await fetchWithAuth(getReadUrl(SHEET_NAME, token));
-      if (!res.ok) throw new Error("시트를 불러올 수 없어요.");
-      const json = await res.json();
+      const json = await readSheet(SHEET_ID, SHEET_NAME);
       setData(json.values || []);
       setLastUpdated(new Date());
     } catch (e) {
@@ -122,44 +85,39 @@ export default function Volunteer() {
 
   // 행 데이터: A=연번, C=학번, D=이름, E=연락처, F=희망일, G=희망시간대, H=집합장소, I=지도교사, J=봉사내용, K=완료확인
   // 데이터는 5행(인덱스 4)부터
-  // 오늘 날짜를 M/D 형식으로
-const allRows = (() => {
-  const all = data.slice(4).filter((row) => row[2] || row[3]);
+  const allRows = (() => {
+    const all = data.slice(4).filter((row) => row[2] || row[3]);
 
-  const todayObj = new Date();
-  const todayMD = `${todayObj.getMonth() + 1}/${todayObj.getDate()}`;
+    const todayObj = new Date();
+    const todayMD = `${todayObj.getMonth() + 1}/${todayObj.getDate()}`;
 
-  const todayIdx = all.findIndex((row) => row[5] === todayMD);
-  const sliced = todayIdx >= 0 ? all.slice(todayIdx) : all;
+    const todayIdx = all.findIndex((row) => row[5] === todayMD);
+    const sliced = todayIdx >= 0 ? all.slice(todayIdx) : all;
 
-  // 날짜순 정렬 ("4/27", "2026. 4. 27" 같은 다양한 형식 처리)
-  const parseDate = (str) => {
-    if (!str) return new Date(9999, 0, 1); // 빈 값은 맨 뒤로
-    // "2026. 4. 27" 형식
-    const fullMatch = str.match(/(\d{4})\.\s*(\d+)\.\s*(\d+)/);
-    if (fullMatch) return new Date(parseInt(fullMatch[1]), parseInt(fullMatch[2]) - 1, parseInt(fullMatch[3]));
-    // "4/27" 형식
-    const shortMatch = str.match(/(\d+)\/(\d+)/);
-    if (shortMatch) return new Date(todayObj.getFullYear(), parseInt(shortMatch[1]) - 1, parseInt(shortMatch[2]));
-    return new Date(9999, 0, 1);
-  };
+    const parseDate = (str) => {
+      if (!str) return new Date(9999, 0, 1);
+      const fullMatch = str.match(/(\d{4})\.\s*(\d+)\.\s*(\d+)/);
+      if (fullMatch) return new Date(parseInt(fullMatch[1]), parseInt(fullMatch[2]) - 1, parseInt(fullMatch[3]));
+      const shortMatch = str.match(/(\d+)\/(\d+)/);
+      if (shortMatch) return new Date(todayObj.getFullYear(), parseInt(shortMatch[1]) - 1, parseInt(shortMatch[2]));
+      return new Date(9999, 0, 1);
+    };
 
-  return [...sliced].sort((a, b) => parseDate(a[5]) - parseDate(b[5]));
-})();
-const myRows = allRows.filter((row) => row[2] === studentId);
+    return [...sliced].sort((a, b) => parseDate(a[5]) - parseDate(b[5]));
+  })();
+  const myRows = allRows.filter((row) => row[2] === studentId);
 
-// 날짜 옵션 추출 - F열은 인덱스 5
-const dateOptions = [...new Set(allRows.map((r) => r[5]).filter(Boolean))].sort();
+  const dateOptions = [...new Set(allRows.map((r) => r[5]).filter(Boolean))].sort();
 
-const filtered = allRows.filter((row) => {
-  if (search && !(row[2] || "").includes(search) && !(row[3] || "").includes(search)) return false;
-  if (filterDate && row[5] !== filterDate) return false;
-  if (filterStatus === "completed" && row[10] !== "완료") return false;
-  if (filterStatus === "pending" && row[10] === "완료") return false;
-  if (filterStatus === "assigned" && !row[7]) return false;
-  if (filterStatus === "unassigned" && row[7]) return false;
-  return true;
-});
+  const filtered = allRows.filter((row) => {
+    if (search && !(row[2] || "").includes(search) && !(row[3] || "").includes(search)) return false;
+    if (filterDate && row[5] !== filterDate) return false;
+    if (filterStatus === "completed" && row[10] !== "완료") return false;
+    if (filterStatus === "pending" && row[10] === "완료") return false;
+    if (filterStatus === "assigned" && !row[7]) return false;
+    if (filterStatus === "unassigned" && row[7]) return false;
+    return true;
+  });
 
   const renderRow = (row, i) => (
     <tr key={i} className={`${i % 2 === 0 ? "even" : ""} ${row[2] === studentId ? "my-row" : ""}`}>
@@ -174,7 +132,6 @@ const filtered = allRows.filter((row) => {
       <td className={row[10] === "완료" ? "completed" : "pending"}>{row[10] || "대기"}</td>
     </tr>
   );
-
 
   return (
     <div className="vol-wrap">

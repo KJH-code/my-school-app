@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react";
 import "./Attendance.css";
-import { auth, fetchWithAuth, getSheetsToken, refreshSheetsToken } from "./firebase";
+import { auth } from "./firebase";
+import { readSheet, writeSheet } from "./lib/api";
+
 const SHEET_ID = "1pk3xJdqa2y9xDR2B7LcdvcmwCt-mlE95upEC6mIObwc";
 const SHEET_NAME = "학생 신청";
 
@@ -24,18 +26,6 @@ const CAPACITY = {
   "대회의실": 30, "세미나실1": 5, "세미나실2": 5, "세미나실3": 5, "세미나실4": 5,
 };
 
-// 토큰 가져오기 (없으면 자동 갱신)
-async function ensureToken() {
-  let token = getSheetsToken();
-  if (!token) token = await refreshSheetsToken();
-  return token;
-}
-
-function getReadUrl(sheetName, token) {
-  const encoded = encodeURIComponent(sheetName);
-  return `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/${encoded}?access_token=${token}`;
-}
-
 export default function Attendance() {
   const [tab, setTab] = useState("student");
   const [studentData, setStudentData] = useState([]);
@@ -53,7 +43,6 @@ export default function Attendance() {
   const [filterGrade, setFilterGrade] = useState("");
   const [filterClass, setFilterClass] = useState("");
 
-  // 외출 신청 관련 state
   const [showOutingModal, setShowOutingModal] = useState(false);
   const [outingForm, setOutingForm] = useState({ leaveTime: "", returnTime: "" });
   const [outingSubmitting, setOutingSubmitting] = useState(false);
@@ -66,16 +55,8 @@ export default function Attendance() {
     setLoading(true);
     setError(null);
     try {
-      const token = await ensureToken();
-      if (!token) {
-        setError("시트 접근 권한이 없어요. 로그아웃 후 다시 로그인해주세요.");
-        setLoading(false);
-        return;
-      }
-
-      const sRes = await fetchWithAuth(getReadUrl("학생 신청", token));
-      if (!sRes.ok) throw new Error("시트를 불러올 수 없어요.");
-      const sJson = await sRes.json();
+      // 학생 신청 시트 읽기
+      const sJson = await readSheet(SHEET_ID, "학생 신청");
       const values = sJson.values || [];
       setStudentData(values);
 
@@ -94,8 +75,9 @@ export default function Attendance() {
         setMyRow({ index: rowIndex, data: values[rowIndex] });
         setForm({ loc1: values[rowIndex][2] || "", loc2: values[rowIndex][5] || "" });
       }
-      const oRes = await fetchWithAuth(getReadUrl("외출 신청", token));
-      const oJson = await oRes.json();
+
+      // 외출 신청 시트 읽기
+      const oJson = await readSheet(SHEET_ID, "외출 신청");
       setOutingData(oJson.values || []);
       setLastUpdated(new Date());
     } catch (e) {
@@ -123,31 +105,25 @@ export default function Attendance() {
     if (!myRow) { setSubmitMsg("내 학번을 시트에서 찾을 수 없어요."); return; }
     setSubmitting(true);
     setSubmitMsg("");
-    const token = await ensureToken();
-    if (!token) {
-      setSubmitMsg("❌ 로그인이 필요해요.");
-      setSubmitting(false);
-      return;
-    }
     const sheetRow = myRow.index + 1;
     try {
       const requests = [];
-      if (form.loc1) requests.push(fetchWithAuth(
-        `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/${encodeURIComponent(SHEET_NAME)}!C${sheetRow}?valueInputOption=USER_ENTERED&access_token=${token}`,
-        { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ values: [[form.loc1]] }) }
-      ));
-      if (form.loc2) requests.push(fetchWithAuth(
-        `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/${encodeURIComponent(SHEET_NAME)}!F${sheetRow}?valueInputOption=USER_ENTERED&access_token=${token}`,
-        { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ values: [[form.loc2]] }) }
-      ));
-      const results = await Promise.all(requests);
-      if (results.every((r) => r.ok)) {
-        setSubmitMsg("✅ 신청 완료!");
-        setShowModal(false);
-        fetchData();
-      } else {
-        setSubmitMsg("❌ 오류가 발생했어요. 다시 시도해줘.");
-      }
+      if (form.loc1) requests.push(writeSheet({
+        spreadsheetId: SHEET_ID,
+        range: `${SHEET_NAME}!C${sheetRow}`,
+        values: [[form.loc1]],
+        mode: "update",
+      }));
+      if (form.loc2) requests.push(writeSheet({
+        spreadsheetId: SHEET_ID,
+        range: `${SHEET_NAME}!F${sheetRow}`,
+        values: [[form.loc2]],
+        mode: "update",
+      }));
+      await Promise.all(requests);
+      setSubmitMsg("✅ 신청 완료!");
+      setShowModal(false);
+      fetchData();
     } catch (e) {
       setSubmitMsg("❌ " + e.message);
     } finally {
@@ -163,43 +139,24 @@ export default function Attendance() {
     setOutingSubmitting(true);
     setOutingMsg("");
     try {
-      const token = await ensureToken();
-      if (!token) {
-        setOutingMsg("❌ 로그인이 필요해요.");
-        setOutingSubmitting(false);
-        return;
-      }
-
-      // 외출 시트 다음 빈 행 — 헤더 4행이므로 최소 5행부터
-      const nextRow = Math.max(5, outingData.length + 1);
-
-      // 오늘 날짜 "2026. 5. 6" 형식
       const today = new Date();
       const dateStr = `${today.getFullYear()}. ${today.getMonth() + 1}. ${today.getDate()}`;
 
-      // B~F에 한 번에 쓰기 (학번, 이름, 신청일, 나가는 시각, 들어오는 시각)
-      const range = `외출 신청!B${nextRow}:F${nextRow}`;
-      const url = `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/${encodeURIComponent(range)}?valueInputOption=USER_ENTERED&access_token=${token}`;
-
-      const res = await fetchWithAuth(url, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          values: [[studentId, studentName, dateStr, outingForm.leaveTime, outingForm.returnTime]]
-        }),
+      // append 모드 — 시트가 알아서 빈 행 찾아서 추가
+      await writeSheet({
+        spreadsheetId: SHEET_ID,
+        range: "외출 신청!B:F",
+        values: [[studentId, studentName, dateStr, outingForm.leaveTime, outingForm.returnTime]],
+        mode: "append",
       });
 
-      if (res.ok) {
-        setOutingMsg("✅ 신청 완료!");
-        setTimeout(() => {
-          setShowOutingModal(false);
-          setOutingMsg("");
-          setOutingForm({ leaveTime: "", returnTime: "" });
-          fetchData();
-        }, 1000);
-      } else {
-        setOutingMsg("❌ 오류 발생. 다시 시도해주세요.");
-      }
+      setOutingMsg("✅ 신청 완료!");
+      setTimeout(() => {
+        setShowOutingModal(false);
+        setOutingMsg("");
+        setOutingForm({ leaveTime: "", returnTime: "" });
+        fetchData();
+      }, 1000);
     } catch (e) {
       setOutingMsg("❌ " + e.message);
     } finally {

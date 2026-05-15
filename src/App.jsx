@@ -1,5 +1,5 @@
-import { signInWithPopup, signOut, onAuthStateChanged, GoogleAuthProvider } from "firebase/auth";
-import { auth, provider, saveSheetsToken } from "./firebase";
+import { signInWithCustomToken, signOut, onAuthStateChanged } from "firebase/auth";
+import { auth } from "./firebase";
 import { useState, useEffect } from "react";
 import Sidebar from "./Sidebar";
 import "./App.css";
@@ -33,20 +33,33 @@ const Icon = ({ name, size = 24 }) => {
   );
 };
 
-// 전역 로그인 함수 — 어디서든 쓸 수 있게
-export const requireLogin = async () => {
+// OAuth client ID (공개돼도 되는 정보)
+const GOOGLE_CLIENT_ID = "493777626300-rdavqmp61i5g1b3u63rm8dkha6elj66s.apps.googleusercontent.com";
+
+// 전역 로그인 함수 — Google OAuth 페이지로 통째로 이동
+export const requireLogin = () => {
   if (auth.currentUser) return auth.currentUser;
-  try {
-    const result = await signInWithPopup(auth, provider);
-    const credential = GoogleAuthProvider.credentialFromResult(result);
-    if (credential?.accessToken) {
-      saveSheetsToken(credential.accessToken);  // ← 이거로 변경
-    }
-    return result.user;
-  } catch (e) {
-    console.error("로그인 실패", e);
-    return null;
-  }
+
+  const redirectUri = `${window.location.origin}/api/auth/callback`;
+
+  const scope = [
+    'openid',
+    'email',
+    'profile',
+    'https://www.googleapis.com/auth/spreadsheets',
+  ].join(' ');
+
+  const params = new URLSearchParams({
+    client_id: GOOGLE_CLIENT_ID,
+    redirect_uri: redirectUri,
+    response_type: 'code',
+    scope,
+    access_type: 'offline',
+    prompt: 'consent',
+    hd: 'sshs.hs.kr',
+  });
+
+  window.location.href = `https://accounts.google.com/o/oauth2/v2/auth?${params}`;
 };
 
 function App() {
@@ -54,9 +67,27 @@ function App() {
   const [activePage, setActivePage] = useState("home");
 
   useEffect(() => {
-    onAuthStateChanged(auth, (currentUser) => {
+    // OAuth callback에서 돌아왔을 때 URL 처리
+    const params = new URLSearchParams(window.location.search);
+    const token = params.get('token');
+    const authError = params.get('auth_error');
+
+    if (token) {
+      signInWithCustomToken(auth, token)
+        .catch((err) => console.error('Custom token sign-in failed', err))
+        .finally(() => {
+          window.history.replaceState({}, '', window.location.pathname);
+        });
+    } else if (authError) {
+      alert(`로그인 실패: ${authError}`);
+      window.history.replaceState({}, '', window.location.pathname);
+    }
+
+    // 로그인 상태 구독
+    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
       setUser(currentUser);
     });
+    return () => unsubscribe();
   }, []);
 
   const logout = () => signOut(auth);
@@ -96,7 +127,6 @@ function App() {
 }
 
 function PageContent({ activePage, user, setActivePage }) {
-  // 로그인 필요 페이지 가드
   const needsAuth = ["attendance", "volunteer", "profile"];
   if (needsAuth.includes(activePage) && !user) {
     return (
@@ -123,7 +153,6 @@ function PageContent({ activePage, user, setActivePage }) {
   return null;
 }
 
-// 비로그인 사용자용 간단 안내
 function ReadOnlyAnthem() {
   return (
     <div className="auth-required">
