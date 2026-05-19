@@ -67,14 +67,19 @@ function App() {
   const [activePage, setActivePage] = useState("home");
 
   useEffect(() => {
-    // OAuth callback에서 돌아왔을 때 URL 처리
     const params = new URLSearchParams(window.location.search);
     const token = params.get('token');
     const authError = params.get('auth_error');
 
     if (token) {
+      alert(`[1] token 받음 (길이: ${token.length})`);
       signInWithCustomToken(auth, token)
-        .catch((err) => console.error('Custom token sign-in failed', err))
+        .then((result) => {
+          alert(`[2] signIn 성공: ${result.user.email}`);
+        })
+        .catch((err) => {
+          alert(`[2] signIn 실패: code=${err.code} msg=${err.message}`);
+        })
         .finally(() => {
           window.history.replaceState({}, '', window.location.pathname);
         });
@@ -83,7 +88,6 @@ function App() {
       window.history.replaceState({}, '', window.location.pathname);
     }
 
-    // 로그인 상태 구독
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
       setUser(currentUser);
     });
