@@ -34,13 +34,34 @@ export default async function handler(req, res) {
 
     const tokens = await tokenResponse.json();
 
-    // id_token에서 사용자 정보 꺼내기
-    const payload = JSON.parse(
-      Buffer.from(tokens.id_token.split('.')[1], 'base64').toString()
-    );
-    const email = payload.email;
-    const uid = payload.sub;
+    // id_token에서 사용자 정보 꺼내기 (base64url 디코딩)
+    const base64url = tokens.id_token.split('.')[1];
+    const base64 = base64url.replace(/-/g, '+').replace(/_/g, '/');
+    const payload = JSON.parse(Buffer.from(base64, 'base64').toString('utf-8'));
+    console.log('OAuth payload:', payload);  // 디버깅용
 
+    // id_token에 이메일 없으면 userinfo API로 추가 조회
+    let email = payload.email;
+    let name = payload.name;
+    let picture = payload.picture;
+
+    if (!email) {
+      const userinfoRes = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+        headers: { Authorization: `Bearer ${tokens.access_token}` },
+      });
+      if (userinfoRes.ok) {
+        const info = await userinfoRes.json();
+        email = email || info.email;
+        name = name || info.name;
+        picture = picture || info.picture;
+      }
+    }
+
+    if (!email) {
+      console.error('No email available');
+      return res.redirect('/?auth_error=no_email');
+    }
+    
     // 학교 도메인 체크
     if (!email.endsWith('@sshs.hs.kr')) {
       return res.redirect('/?auth_error=invalid_domain');
@@ -48,7 +69,7 @@ export default async function handler(req, res) {
 
     // Firestore에 토큰 저장
     const expiresAt = Date.now() + tokens.expires_in * 1000;
-    await db.collection('tokens').doc(uid).set({
+    await db.collection('tokens').doc(actualUid).set({
       email,
       accessToken: encrypt(tokens.access_token),
       ...(tokens.refresh_token && {
@@ -67,7 +88,7 @@ export default async function handler(req, res) {
       actualUid = existingUser.uid;
       // 정보 업데이트
       await adminAuth.updateUser(actualUid, {
-        displayName: payload.name,
+        displayName: name || email.split('@')[0],
         photoURL: payload.picture,
         emailVerified: true,
       });
@@ -88,7 +109,7 @@ export default async function handler(req, res) {
     }
 
     // Custom token 생성
-    const customToken = await adminAuth.createCustomToken(uid, {
+    const customToken = await adminAuth.createCustomToken(actualUid, {
       email,
       name: payload.name,
     });
