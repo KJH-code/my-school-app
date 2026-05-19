@@ -13,7 +13,7 @@ export default async function handler(req, res) {
       return res.redirect('/?auth_error=no_code');
     }
 
-    // code를 token으로 교환
+    // 1. code를 token으로 교환
     const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -34,13 +34,13 @@ export default async function handler(req, res) {
 
     const tokens = await tokenResponse.json();
 
-    // id_token에서 사용자 정보 꺼내기 (base64url 디코딩)
+    // 2. id_token payload 까기 (base64url 디코딩)
     const base64url = tokens.id_token.split('.')[1];
     const base64 = base64url.replace(/-/g, '+').replace(/_/g, '/');
     const payload = JSON.parse(Buffer.from(base64, 'base64').toString('utf-8'));
-    console.log('OAuth payload:', payload);  // 디버깅용
+    console.log('OAuth payload:', payload);
 
-    // id_token에 이메일 없으면 userinfo API로 추가 조회
+    // 3. 이메일/이름/사진 변수로 빼기 (필요시 userinfo API fallback)
     let email = payload.email;
     let name = payload.name;
     let picture = payload.picture;
@@ -58,16 +58,40 @@ export default async function handler(req, res) {
     }
 
     if (!email) {
-      console.error('No email available');
       return res.redirect('/?auth_error=no_email');
     }
-    
-    // 학교 도메인 체크
+
+    // 4. 학교 도메인 체크
     if (!email.endsWith('@sshs.hs.kr')) {
       return res.redirect('/?auth_error=invalid_domain');
     }
 
-    // Firestore에 토큰 저장
+    // 5. 사용자 찾기 (이메일로) → actualUid 결정
+    let actualUid;
+    try {
+      const existingUser = await adminAuth.getUserByEmail(email);
+      actualUid = existingUser.uid;
+      await adminAuth.updateUser(actualUid, {
+        displayName: name || email.split('@')[0],
+        photoURL: picture,
+        emailVerified: true,
+      });
+    } catch (err) {
+      if (err.code === 'auth/user-not-found') {
+        const newUser = await adminAuth.createUser({
+          email,
+          emailVerified: true,
+          displayName: name || email.split('@')[0],
+          photoURL: picture,
+        });
+        actualUid = newUser.uid;
+      } else {
+        console.error('User lookup failed:', err);
+        throw err;
+      }
+    }
+
+    // 6. Firestore에 토큰 저장 (actualUid 사용)
     const expiresAt = Date.now() + tokens.expires_in * 1000;
     await db.collection('tokens').doc(actualUid).set({
       email,
@@ -79,41 +103,13 @@ export default async function handler(req, res) {
       updatedAt: admin.firestore.FieldValue.serverTimestamp(),
     }, { merge: true });
 
-    // displayName, photoURL 설정
-    // displayName, photoURL 설정
-    // 사용자 찾기 (이메일로 먼저 — 기존 popup 흐름으로 만들어진 계정 호환)
-    let actualUid;
-    try {
-      const existingUser = await adminAuth.getUserByEmail(email);
-      actualUid = existingUser.uid;
-      // 정보 업데이트
-      await adminAuth.updateUser(actualUid, {
-        displayName: name || email.split('@')[0],
-        photoURL: payload.picture,
-        emailVerified: true,
-      });
-    } catch (err) {
-      if (err.code === 'auth/user-not-found') {
-        // 새 사용자
-        const newUser = await adminAuth.createUser({
-          email,
-          emailVerified: true,
-          displayName: payload.name,
-          photoURL: payload.picture,
-        });
-        actualUid = newUser.uid;
-      } else {
-        console.error('User lookup failed:', err);
-        throw err;
-      }
-    }
-
-    // Custom token 생성
+    // 7. Custom token 생성 (actualUid 사용)
     const customToken = await adminAuth.createCustomToken(actualUid, {
       email,
-      name: payload.name,
+      name: name || email.split('@')[0],
     });
 
+    // 8. 클라이언트로 redirect
     res.redirect(`/?token=${customToken}`);
 
   } catch (err) {
