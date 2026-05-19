@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import {
   collection, addDoc, getDocs, doc, setDoc, deleteDoc,
-  query, orderBy, serverTimestamp, updateDoc, increment, where
+  query, orderBy, serverTimestamp, updateDoc, increment, where, onSnapshot
 } from "firebase/firestore";
 import { db } from "./firebase";
 import "./Agenda.css";
@@ -17,29 +17,41 @@ export default function Agenda({ user }) {
   const nameOnly = user?.displayName?.replace(/^[0-9]+/, "") || "";
   const isAdmin = user?.email === "26027@sshs.hs.kr";
 
-  const fetchPosts = async () => {
-    setLoading(true);
-    try {
-      const q = query(collection(db, "agenda_posts"), orderBy("createdAt", "desc"));
-      const snap = await getDocs(q);
+  // 글 목록 실시간 구독
+  useEffect(() => {
+    const q = query(collection(db, "agenda_posts"), orderBy("createdAt", "desc"));
+    const unsub = onSnapshot(q, (snap) => {
       setPosts(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
-
-      if (user?.uid) {
-        const vSnap = await getDocs(query(collection(db, "agenda_votes"), where("userId", "==", user?.uid)));
-        const votes = {};
-        vSnap.forEach((d) => { votes[d.data().postId] = d.data().type; });
-        setMyVotes(votes);
-
-        const rSnap = await getDocs(query(collection(db, "agenda_reports"), where("userId", "==", user?.uid)));
-        const reports = {};
-        rSnap.forEach((d) => { reports[d.data().postId] = true; });
-        setMyReports(reports);
-      }
-    } finally {
       setLoading(false);
+    }, (err) => {
+      console.error("글 구독 실패", err);
+      setLoading(false);
+    });
+    return () => unsub();
+  }, []);
+
+  // 내 투표/신고 실시간 구독 (로그인한 경우만)
+  useEffect(() => {
+    if (!user?.uid) {
+      setMyVotes({});
+      setMyReports({});
+      return;
     }
-  };
-  useEffect(() => { fetchPosts(); }, []);
+    const vQ = query(collection(db, "agenda_votes"), where("userId", "==", user.uid));
+    const rQ = query(collection(db, "agenda_reports"), where("userId", "==", user.uid));
+
+    const unsubV = onSnapshot(vQ, (snap) => {
+      const votes = {};
+      snap.forEach((d) => { votes[d.data().postId] = d.data().type; });
+      setMyVotes(votes);
+    });
+    const unsubR = onSnapshot(rQ, (snap) => {
+      const reports = {};
+      snap.forEach((d) => { reports[d.data().postId] = true; });
+      setMyReports(reports);
+    });
+    return () => { unsubV(); unsubR(); };
+  }, [user?.uid]);
 
   const handleVote = async (postId, type) => {
     if (!user?.uid) return;
@@ -48,18 +60,15 @@ export default function Agenda({ user }) {
     const postRef = doc(db, "agenda_posts", postId);
     const current = myVotes[postId];
 
-    // 1. 화면부터 즉시 업데이트 (optimistic)
     const prevVotes = myVotes;
     const prevPosts = posts;
 
     if (current === type) {
-      // 취소
       setMyVotes((v) => { const n = { ...v }; delete n[postId]; return n; });
       setPosts((p) => p.map((post) => post.id === postId
         ? { ...post, votes: { ...post.votes, [type]: Math.max(0, (post.votes?.[type] || 1) - 1) } }
         : post));
     } else if (current) {
-      // 의견 바꿈
       setMyVotes((v) => ({ ...v, [postId]: type }));
       setPosts((p) => p.map((post) => post.id === postId
         ? { ...post, votes: {
@@ -69,14 +78,12 @@ export default function Agenda({ user }) {
           } }
         : post));
     } else {
-      // 새로 투표
       setMyVotes((v) => ({ ...v, [postId]: type }));
       setPosts((p) => p.map((post) => post.id === postId
         ? { ...post, votes: { ...post.votes, [type]: (post.votes?.[type] || 0) + 1 } }
         : post));
     }
 
-    // 2. 서버 작업은 백그라운드에서
     try {
       if (current === type) {
         await deleteDoc(voteRef);
@@ -92,7 +99,6 @@ export default function Agenda({ user }) {
         await setDoc(voteRef, { userId: user?.uid, postId, type });
       }
     } catch (e) {
-      // 서버 실패하면 화면 되돌리기
       console.error("투표 실패", e);
       setMyVotes(prevVotes);
       setPosts(prevPosts);
@@ -104,7 +110,6 @@ export default function Agenda({ user }) {
     if (myReports[postId]) return;
     const reportId = `${user?.uid}_${postId}`;
 
-    // optimistic
     const prevReports = myReports;
     const prevPosts = posts;
     setMyReports((r) => ({ ...r, [postId]: true }));
@@ -127,10 +132,8 @@ export default function Agenda({ user }) {
   const handleDelete = async (postId) => {
     if (!window.confirm("삭제할까요?")) return;
 
-    // optimistic
     const prevPosts = posts;
     setPosts((p) => p.filter((post) => post.id !== postId));
-    // 상세 화면에서 삭제하는 경우 목록으로 돌아가기
     if (selectedPost?.id === postId) setSelectedPost(null);
 
     try {
@@ -143,7 +146,6 @@ export default function Agenda({ user }) {
   };
 
   if (selectedPost) {
-    // 항상 최신 posts에서 찾기
     const livePost = posts.find((p) => p.id === selectedPost.id) || selectedPost;
     return (
       <PostDetail
@@ -202,7 +204,7 @@ export default function Agenda({ user }) {
           user={user}
           nameOnly={nameOnly}
           onClose={() => setShowWrite(false)}
-          onSubmit={() => { setShowWrite(false); fetchPosts(); }}
+          onSubmit={() => setShowWrite(false)}
         />
       )}
     </div>
@@ -215,16 +217,15 @@ function PostDetail({ post, user, isAdmin, myVote, myReport, onVote, onReport, o
   const nameOnly = user?.displayName?.replace(/^[0-9]+/, "") || "";
 
   useEffect(() => {
-    const fetchComments = async () => {
-      const q = query(
-        collection(db, "agenda_comments"),
-        where("postId", "==", post.id),
-        orderBy("createdAt", "asc")
-      );
-      const snap = await getDocs(q);
+    const q = query(
+      collection(db, "agenda_comments"),
+      where("postId", "==", post.id),
+      orderBy("createdAt", "asc")
+    );
+    const unsub = onSnapshot(q, (snap) => {
       setComments(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
-    };
-    fetchComments();
+    });
+    return () => unsub();
   }, [post.id]);
 
   const handleComment = async () => {
@@ -232,14 +233,12 @@ function PostDetail({ post, user, isAdmin, myVote, myReport, onVote, onReport, o
     const text = commentText.trim();
     setCommentText("");
 
-    // optimistic: 화면 먼저
     const tempId = `temp_${Date.now()}`;
     setComments((c) => [...c, { id: tempId, authorName: nameOnly, authorId: user?.uid, content: text, createdAt: null }]);
     setPosts((p) => p.map((pp) => pp.id === post.id
       ? { ...pp, commentCount: (pp.commentCount || 0) + 1 }
       : pp));
 
-    // 서버 작업은 백그라운드
     try {
       const docRef = await addDoc(collection(db, "agenda_comments"), {
         postId: post.id,
@@ -249,7 +248,6 @@ function PostDetail({ post, user, isAdmin, myVote, myReport, onVote, onReport, o
         createdAt: serverTimestamp(),
       });
       await updateDoc(doc(db, "agenda_posts", post.id), { commentCount: increment(1) });
-      // 임시 id를 진짜 id로 교체
       setComments((c) => c.map((cm) => cm.id === tempId ? { ...cm, id: docRef.id } : cm));
     } catch (e) {
       console.error("댓글 실패", e);
@@ -263,7 +261,6 @@ function PostDetail({ post, user, isAdmin, myVote, myReport, onVote, onReport, o
 
   const handleDeleteComment = async (commentId) => {
     const prev = comments;
-    // optimistic
     setComments((c) => c.filter((cm) => cm.id !== commentId));
     setPosts((p) => p.map((pp) => pp.id === post.id
       ? { ...pp, commentCount: Math.max(0, (pp.commentCount || 1) - 1) }
