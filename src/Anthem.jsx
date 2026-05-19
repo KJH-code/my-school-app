@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import {
-  collection, addDoc, getDocs, doc, setDoc, deleteDoc,
-  query, where, orderBy, serverTimestamp
+  collection, addDoc, getDocs, doc, setDoc, deleteDoc, updateDoc,
+  query, where, orderBy, serverTimestamp, increment
 } from "firebase/firestore";
 import { db } from "./firebase";
 import "./Anthem.css";
@@ -97,28 +97,63 @@ export default function Anthem({ user }) {
     const voteRef = doc(db, "anthem_votes", voteId);
     const songRef = doc(db, "anthem_songs", song.id);
     const current = myVotes[song.id];
+    const newType = current === type ? null : type;
 
-    const newSongs = songs.map(s => {
+    // 1. 화면 즉시 업데이트 (optimistic)
+    const prevSongs = songs;
+    const prevVotes = myVotes;
+    setSongs(songs.map(s => {
       if (s.id !== song.id) return s;
-      let { upvotes = 0, downvotes = 0 } = s;
-      if (current === "up") upvotes--;
-      if (current === "down") downvotes--;
-      const newType = current === type ? null : type;
-      if (newType === "up") upvotes++;
-      if (newType === "down") downvotes++;
-      return { ...s, upvotes, downvotes, score: upvotes - downvotes };
+      let up = s.upvotes || 0;
+      let down = s.downvotes || 0;
+      if (current === "up") up--;
+      if (current === "down") down--;
+      if (newType === "up") up++;
+      if (newType === "down") down++;
+      return { ...s, upvotes: up, downvotes: down, score: up - down };
+    }).sort((a, b) => (b.score || 0) - (a.score || 0)));
+    setMyVotes(prev => {
+      const next = { ...prev };
+      if (newType === null) delete next[song.id];
+      else next[song.id] = newType;
+      return next;
     });
-    setSongs(newSongs.sort((a, b) => b.score - a.score));
-    setMyVotes(prev => ({ ...prev, [song.id]: current === type ? null : type }));
 
+    // 2. 서버 업데이트 (atomic increment)
     try {
-      const newType = current === type ? null : type;
-      if (newType === null) await deleteDoc(voteRef);
-      else await setDoc(voteRef, { userId: user.uid, songId: song.id, weekKey: song.weekKey, type: newType });
-      const upSnap = await getDocs(query(collection(db, "anthem_votes"), where("songId", "==", song.id), where("type", "==", "up")));
-      const downSnap = await getDocs(query(collection(db, "anthem_votes"), where("songId", "==", song.id), where("type", "==", "down")));
-      await setDoc(songRef, { upvotes: upSnap.size, downvotes: downSnap.size, score: upSnap.size - downSnap.size }, { merge: true });
-    } catch (e) { console.error(e); }
+      if (current === type) {
+        // 같은 거 또 누름 → 취소
+        await deleteDoc(voteRef);
+        await updateDoc(songRef, {
+          [`${type}votes`]: increment(-1),
+          score: increment(type === "up" ? -1 : 1),
+        });
+      } else if (current) {
+        // 의견 바꿈 (up↔down)
+        await setDoc(voteRef, {
+          userId: user.uid, songId: song.id, weekKey: song.weekKey, type,
+        });
+        await updateDoc(songRef, {
+          [`${current}votes`]: increment(-1),
+          [`${type}votes`]: increment(1),
+          score: increment(type === "up" ? 2 : -2),
+        });
+      } else {
+        // 새로 투표
+        await setDoc(voteRef, {
+          userId: user.uid, songId: song.id, weekKey: song.weekKey, type,
+        });
+        await updateDoc(songRef, {
+          [`${type}votes`]: increment(1),
+          score: increment(type === "up" ? 1 : -1),
+        });
+      }
+    } catch (e) {
+      console.error("투표 실패", e);
+      setSongs(prevSongs);
+      setMyVotes(prevVotes);
+      alert("투표에 실패했어요. 다시 시도해주세요.");
+    }
   };
 
   const archiveWeeks = getWeekKeys(6).slice(1, 5);
