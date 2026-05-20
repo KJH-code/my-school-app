@@ -6,14 +6,8 @@ const ALLOWED_SHEETS = new Set([
   '18HD1FjfHoNiR6rxgmDPc3wJF-8a6Fs2lFCLYsYWrWe4', // 봉사
 ]);
 
-// 이메일에서 학번 추출 (26027@sshs.hs.kr → "26027")
-function studentIdFromEmail(email) {
-  return email.split('@')[0];
-}
-
 // 이석 시트 행 검증: 그 행이 본인 학번인지 시트에서 확인
 async function verifyAttendanceRow(accessToken, spreadsheetId, range, studentId) {
-  // range 예: "학생 신청!C42" → 행 번호 추출
   const match = range.match(/!([A-Z]+)(\d+)/);
   if (!match) return false;
   const rowNum = match[2];
@@ -47,7 +41,10 @@ export default async function handler(req, res) {
     if (!email || !email.endsWith('@sshs.hs.kr')) {
       return res.status(403).json({ error: 'Not a school user' });
     }
-    const studentId = studentIdFromEmail(email);
+    const studentId = decoded.studentId || '';
+    if (!studentId) {
+      return res.status(403).json({ error: 'No student ID in token (재로그인 필요)' });
+    }
 
     // 2. 파라미터
     const { spreadsheetId, range, values, mode } = req.body || {};
@@ -74,13 +71,11 @@ export default async function handler(req, res) {
     const VOLUNTEER_SHEET = '18HD1FjfHoNiR6rxgmDPc3wJF-8a6Fs2lFCLYsYWrWe4';
 
     if (spreadsheetId === ATTENDANCE_SHEET && mode === 'update') {
-      // 이석 신청 — 본인 행인지 확인
       const ok = await verifyAttendanceRow(accessToken, spreadsheetId, range, studentId);
       if (!ok) {
         return res.status(403).json({ error: '본인 행에만 신청할 수 있어요' });
       }
     } else if (spreadsheetId === ATTENDANCE_SHEET && mode === 'append') {
-      // 외출 신청 — range가 "외출 신청!B:F"여야 하고, values 첫 컬럼이 본인 학번
       if (!range.startsWith('외출 신청')) {
         return res.status(403).json({ error: 'Append는 외출 신청 시트만 허용' });
       }
@@ -89,13 +84,11 @@ export default async function handler(req, res) {
         return res.status(403).json({ error: '본인 학번으로만 신청할 수 있어요' });
       }
     } else if (spreadsheetId === VOLUNTEER_SHEET && mode === 'append') {
-      // 봉사 신청 — values 첫 컬럼이 본인 학번
       const firstValue = values?.[0]?.[0];
       if (firstValue !== studentId) {
         return res.status(403).json({ error: '본인 학번으로만 신청할 수 있어요' });
       }
     } else if (spreadsheetId === VOLUNTEER_SHEET && mode === 'update') {
-      // 봉사 시트엔 update 없음
       return res.status(403).json({ error: '봉사 시트는 update 허용 안 됨' });
     }
 

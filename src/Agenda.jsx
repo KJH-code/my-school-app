@@ -14,7 +14,6 @@ export default function Agenda({ user }) {
   const [myVotes, setMyVotes] = useState({});
   const [myReports, setMyReports] = useState({});
 
-  const nameOnly = user?.displayName?.replace(/^[0-9]+/, "") || "";
   const isAdmin = user?.email === "26027@sshs.hs.kr";
 
   // 글 목록 실시간 구독
@@ -202,7 +201,6 @@ export default function Agenda({ user }) {
       {showWrite && (
         <WriteModal
           user={user}
-          nameOnly={nameOnly}
           onClose={() => setShowWrite(false)}
           onSubmit={() => setShowWrite(false)}
         />
@@ -214,8 +212,8 @@ export default function Agenda({ user }) {
 function PostDetail({ post, user, isAdmin, myVote, myReport, onVote, onReport, onDelete, onBack, setPosts }) {
   const [comments, setComments] = useState([]);
   const [commentText, setCommentText] = useState("");
-  const nameOnly = user?.displayName?.replace(/^[0-9]+/, "") || "";
 
+  // 댓글 실시간 구독
   useEffect(() => {
     const q = query(
       collection(db, "agenda_comments"),
@@ -234,7 +232,7 @@ function PostDetail({ post, user, isAdmin, myVote, myReport, onVote, onReport, o
     setCommentText("");
 
     const tempId = `temp_${Date.now()}`;
-    setComments((c) => [...c, { id: tempId, authorName: nameOnly, authorId: user?.uid, content: text, createdAt: null }]);
+    setComments((c) => [...c, { id: tempId, authorName: user.displayName, authorId: user?.uid, content: text, createdAt: null }]);
     setPosts((p) => p.map((pp) => pp.id === post.id
       ? { ...pp, commentCount: (pp.commentCount || 0) + 1 }
       : pp));
@@ -243,7 +241,7 @@ function PostDetail({ post, user, isAdmin, myVote, myReport, onVote, onReport, o
       const docRef = await addDoc(collection(db, "agenda_comments"), {
         postId: post.id,
         authorId: user?.uid,
-        authorName: nameOnly,
+        authorName: user.displayName,
         content: text,
         createdAt: serverTimestamp(),
       });
@@ -336,7 +334,7 @@ function PostDetail({ post, user, isAdmin, myVote, myReport, onVote, onReport, o
   );
 }
 
-function WriteModal({ user, nameOnly, onClose, onSubmit }) {
+function WriteModal({ user, onClose, onSubmit }) {
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -348,7 +346,7 @@ function WriteModal({ user, nameOnly, onClose, onSubmit }) {
       title: title.trim(),
       content: content.trim(),
       authorId: user?.uid,
-      authorName: nameOnly,
+      authorName: user.displayName,
       createdAt: serverTimestamp(),
       votes: { up: 0, down: 0 },
       commentCount: 0,

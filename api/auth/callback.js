@@ -103,13 +103,17 @@ export default async function handler(req, res) {
       updatedAt: admin.firestore.FieldValue.serverTimestamp(),
     }, { merge: true });
 
-    // 7. Custom token 생성 (actualUid 사용)
+    // 7. displayName에서 학번 추출 (예: "1103김재혁" → "1103")
+    const studentId = (name || '').match(/^[0-9]+/)?.[0] || email.split('@')[0];
+
+    // 8. Custom token 생성 (actualUid 사용 + studentId claim)
     const customToken = await adminAuth.createCustomToken(actualUid, {
       email,
       name: name || email.split('@')[0],
+      studentId,
     });
 
-    // 8. 클라이언트로 redirect
+    // 9. 클라이언트로 redirect
     res.redirect(`/?token=${customToken}`);
 
   } catch (err) {
