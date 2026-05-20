@@ -72,14 +72,8 @@ function App() {
     const authError = params.get('auth_error');
 
     if (token) {
-      alert(`[1] token 받음 (길이: ${token.length})`);
       signInWithCustomToken(auth, token)
-        .then((result) => {
-          alert(`[2] signIn 성공: ${result.user.email}`);
-        })
-        .catch((err) => {
-          alert(`[2] signIn 실패: code=${err.code} msg=${err.message}`);
-        })
+        .catch((err) => console.error('Custom token sign-in failed', err))
         .finally(() => {
           window.history.replaceState({}, '', window.location.pathname);
         });

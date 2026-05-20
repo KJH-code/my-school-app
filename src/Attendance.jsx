@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import "./Attendance.css";
 import { auth } from "./firebase";
 import { readSheet, writeSheet } from "./lib/api";
@@ -142,7 +142,6 @@ export default function Attendance() {
       const today = new Date();
       const dateStr = `${today.getFullYear()}. ${today.getMonth() + 1}. ${today.getDate()}`;
 
-      // append 모드 — 시트가 알아서 빈 행 찾아서 추가
       await writeSheet({
         spreadsheetId: SHEET_ID,
         range: "외출 신청!B:F",
@@ -320,8 +319,8 @@ function StudentTable({ data, search, myId, filterGrade, filterClass }) {
     groups[key].push(row);
   });
 
-  const renderRow = (row, i) => (
-    <tr key={i} className={`${i % 2 === 0 ? "even" : ""} ${row[0] === myId ? "my-row" : ""}`}>
+  const renderRow = (row, key) => (
+    <tr key={key} className={`${row[0] === myId ? "my-row" : ""}`}>
       <td className="mono">{row[0] || ""}</td>
       <td className="bold">{row[1] || ""}</td>
       <td>{row[2] || "-"}</td>
@@ -341,15 +340,15 @@ function StudentTable({ data, search, myId, filterGrade, filterClass }) {
           {!search && myRows.length > 0 && (
             <>
               <tr className="group-header"><td colSpan={6}>⭐ 내 항목</td></tr>
-              {myRows.map((row, i) => renderRow(row, i))}
+              {myRows.map((row, i) => renderRow(row, `my-${row[0]}-${i}`))}
               <tr className="group-divider"><td colSpan={6}></td></tr>
             </>
           )}
           {Object.entries(groups).map(([groupName, rows]) => (
-            <>
-              <tr key={groupName} className="group-header"><td colSpan={6}>{groupName}</td></tr>
-              {rows.map((row, i) => renderRow(row, i))}
-            </>
+            <React.Fragment key={groupName}>
+              <tr className="group-header"><td colSpan={6}>{groupName}</td></tr>
+              {rows.map((row, i) => renderRow(row, `${groupName}-${row[0]}-${i}`))}
+            </React.Fragment>
           ))}
         </tbody>
       </table>
