@@ -1,8 +1,5 @@
 import { useState, useEffect } from "react";
 import "./Meal.css";
-const API_KEY = "b239e5a1b3ec421dbad518ed199277bb";
-const OFFICE_CODE = "B10";
-const SCHOOL_CODE = "7010084";
 
 function getDateStr(date = new Date()) {
   const y = date.getFullYear();
@@ -48,26 +45,18 @@ export default function Meal() {
     try {
       const from = getDateStr(weekDates[0]);
       const to = getDateStr(weekDates[4]);
-      const url = `https://open.neis.go.kr/hub/mealServiceDietInfo?KEY=${API_KEY}&Type=json&ATPT_OFCDC_SC_CODE=${OFFICE_CODE}&SD_SCHUL_CODE=${SCHOOL_CODE}&MLSV_FROM_YMD=${from}&MLSV_TO_YMD=${to}`;
-      const res = await fetch(url);
+      const res = await fetch(`/api/neis/meal?from=${from}&to=${to}`);
       const data = await res.json();
 
-      if (data.mealServiceDietInfo) {
-        const rows = data.mealServiceDietInfo[1].row;
-        const parsed = {};
-        rows.forEach((row) => {
-          const date = row.MLSV_YMD;
-          const type = row.MMEAL_SC_CODE;
-          if (!parsed[date]) parsed[date] = {};
-          parsed[date][type] = row.DDISH_NM
-            .split("<br/>")
-            .map((item) => item.replace(/\s*\(.*?\)/g, "").trim())
-            .filter(Boolean);
-        });
-        setMeals(parsed);
-      } else {
-        setMeals({});
-      }
+      if (data.error) throw new Error(data.error);
+
+      // 백엔드가 [{date, type, dishes, ...}] 형태로 줌 → 화면용으로 재구성
+      const parsed = {};
+      (data.meals || []).forEach((m) => {
+        if (!parsed[m.date]) parsed[m.date] = {};
+        parsed[m.date][m.type] = m.dishes;
+      });
+      setMeals(parsed);
     } catch (e) {
       setError("급식 정보를 불러올 수 없어요.");
     } finally {
