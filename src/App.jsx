@@ -12,6 +12,7 @@ import Agenda from "./Agenda";
 import Meal from "./Meal";
 import Profile from "./Profile";
 import Volunteer from "./Volunteer";
+import Calendar from "./Calendar";   // ★추가
 
 const Icon = ({ name, size = 24 }) => {
   const icons = {
@@ -94,6 +95,7 @@ function App() {
     home: "홈", timetable: "시간표", grades: "성적 계산",
     anthem: "기상곡 신청", notices: "공지사항", agenda: "학교 안건",
     attendance: "이석/외출 현황", meal: "급식표",
+    calendar: "학사일정",   // ★추가
     volunteer: "벌점 경감 봉사", profile: "내 프로필",
   };
 
@@ -145,6 +147,7 @@ function PageContent({ activePage, user, setActivePage }) {
   if (activePage === "attendance") return <Attendance user={user} />;
   if (activePage === "agenda") return <Agenda user={user} />;
   if (activePage === "meal") return <Meal />;
+  if (activePage === "calendar") return <Calendar />;   // ★추가
   if (activePage === "volunteer") return <Volunteer />;
   if (activePage === "profile") return <Profile user={user} setActivePage={setActivePage} />;
 
@@ -218,6 +221,7 @@ function HomePage({ user, setActivePage }) {
     { id: "timetable", icon: "calendar", label: "시간표 보기" },
     { id: "grades", icon: "chart", label: "성적 계산하기" },
     { id: "meal", icon: "utensils", label: "급식표 전체 보기" },
+    { id: "calendar", icon: "calendar", label: "학사일정 보기" },   // ★추가
   ];
 
   return (

@@ -30,11 +30,14 @@ const navItems = [
   { id: "meal", label: "급식표", icon: "utensils" },
 ];
 
-const THEMES = ["dark", "light", "colorful", "pastel"];
+const THEMES = ["dark", "light"];
 
 export default function Sidebar({ user, activePage, setActivePage, onLogout, onLogin }) {
   const [collapsed, setCollapsed] = useState(false);
-  const [theme, setTheme] = useState(() => localStorage.getItem("theme") || "dark");
+  const [theme, setTheme] = useState(() => {
+    const saved = localStorage.getItem("theme");
+    return saved === "light" ? "light" : "dark";
+  });
 
   useEffect(() => {
     document.documentElement.classList.remove(...THEMES);
@@ -48,7 +51,7 @@ export default function Sidebar({ user, activePage, setActivePage, onLogout, onL
   return (
     <aside className={`sidebar ${collapsed ? "collapsed" : ""}`}>
       <div className="sidebar-header" onClick={() => setActivePage("home")}>
-        <Icon name="home" />
+        <span className="sidebar-logo-icon"><Icon name="home" /></span>
         {!collapsed && <span className="sidebar-logo-text">SSHS Portal</span>}
       </div>
 
@@ -76,8 +79,6 @@ export default function Sidebar({ user, activePage, setActivePage, onLogout, onL
             <div className="theme-btns">
               <button className={`theme-btn theme-btn-dark ${theme === "dark" ? "selected" : ""}`} onClick={() => setTheme("dark")} title="다크" />
               <button className={`theme-btn theme-btn-light ${theme === "light" ? "selected" : ""}`} onClick={() => setTheme("light")} title="라이트" />
-              <button className={`theme-btn theme-btn-colorful ${theme === "colorful" ? "selected" : ""}`} onClick={() => setTheme("colorful")} title="컬러풀" />
-              <button className={`theme-btn theme-btn-pastel ${theme === "pastel" ? "selected" : ""}`} onClick={() => setTheme("pastel")} title="파스텔" />
             </div>
           </div>
         )}
