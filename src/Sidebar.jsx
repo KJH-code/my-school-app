@@ -28,6 +28,7 @@ const navItems = [
   { id: "attendance", label: "이석/외출 현황", icon: "run" },
   { id: "volunteer", label: "벌점 경감 봉사", icon: "leaf" },
   { id: "meal", label: "급식표", icon: "utensils" },
+  { id: "calendar", label: "학사일정", icon: "calendar" },
 ];
 
 const THEMES = ["dark", "light"];
