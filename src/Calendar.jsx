@@ -17,29 +17,22 @@ const WEEKDAYS = ["일", "월", "화", "수", "목", "금", "토"];
 
 function weekdayOf(ymd) {
   const d = new Date(+ymd.slice(0, 4), +ymd.slice(4, 6) - 1, +ymd.slice(6, 8));
-  return d.getDay(); // 0=일 ... 6=토
+  return d.getDay();
 }
 
 export default function Calendar() {
   const [events, setEvents] = useState(null);
   const [error, setError] = useState(null);
-  const [showAll, setShowAll] = useState(false); // 지난 일정도 볼지
+  const [showAll, setShowAll] = useState(false);
 
   useEffect(() => {
     const fetchSchedule = async () => {
       try {
         const year = new Date().getFullYear();
-        const API_KEY = "b239e5a1b3ec421dbad518ed199277bb";
-        const url = `https://open.neis.go.kr/hub/SchoolSchedule?KEY=${API_KEY}&Type=json&ATPT_OFCDC_SC_CODE=B10&SD_SCHUL_CODE=7010084&AA_FROM_YMD=${year}0101&AA_TO_YMD=${year}1231&pSize=1000`;
-        const res = await fetch(url);
+        const res = await fetch(`/api/neis/calendar?from=${year}0101&to=${year}1231`);
         const data = await res.json();
-        if (data.RESULT) { setEvents([]); return; }
-        const rows = data.SchoolSchedule?.[1]?.row || [];
-        setEvents(rows.map((row) => ({
-          date: row.AA_YMD,
-          name: row.EVENT_NM,
-          content: row.EVENT_CNTNT || "",
-        })));
+        if (data.error) throw new Error(data.error);
+        setEvents(data.events || []);
       } catch (e) {
         setError(e.message);
       }
@@ -54,10 +47,8 @@ export default function Calendar() {
   const t = new Date();
   const todayStr = `${t.getFullYear()}${String(t.getMonth() + 1).padStart(2, "0")}${String(t.getDate()).padStart(2, "0")}`;
 
-  // 지난 일정 숨김 (토글로 전체 보기 가능)
   const list = showAll ? events : events.filter((e) => e.date >= todayStr);
 
-  // 월별 그룹핑
   const grouped = {};
   list.forEach((e) => {
     const ym = e.date.slice(0, 6);
@@ -85,7 +76,6 @@ export default function Calendar() {
 
       {months.map((ym) => (
         <div key={ym} style={{ marginBottom: 28 }}>
-          {/* 월 헤더 */}
           <div style={{
             display: "flex", alignItems: "baseline", gap: 8,
             paddingBottom: 8, marginBottom: 8, borderBottom: "1px solid #1e293b",
@@ -98,7 +88,6 @@ export default function Calendar() {
             </span>
           </div>
 
-          {/* 일정 목록 */}
           {grouped[ym].map((e, i) => {
             const cat = CAT[categorize(e.name)];
             const wd = weekdayOf(e.date);
@@ -111,7 +100,6 @@ export default function Calendar() {
                 padding: "9px 10px", borderRadius: 8,
                 background: isToday ? "rgba(96,165,250,0.12)" : "transparent",
               }}>
-                {/* 날짜 */}
                 <div style={{ width: 52, flexShrink: 0, textAlign: "center" }}>
                   <div style={{ fontSize: 16, fontWeight: 700, color: "#e2e8f0", lineHeight: 1.1 }}>
                     {+e.date.slice(6, 8)}
@@ -119,13 +107,11 @@ export default function Calendar() {
                   <div style={{ fontSize: 11, color: dayColor }}>{WEEKDAYS[wd]}</div>
                 </div>
 
-                {/* 카테고리 점 */}
                 <span style={{
                   width: 7, height: 7, borderRadius: "50%",
                   background: cat.dot, flexShrink: 0,
                 }} />
 
-                {/* 행사명 */}
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <span style={{ color: cat.color, fontWeight: cat.tag ? 600 : 400 }}>
                     {e.name}
@@ -135,7 +121,6 @@ export default function Calendar() {
                   )}
                 </div>
 
-                {/* 오늘 배지 */}
                 {isToday && (
                   <span style={{
                     fontSize: 11, color: "#60a5fa", fontWeight: 600,
@@ -143,7 +128,6 @@ export default function Calendar() {
                   }}>오늘</span>
                 )}
 
-                {/* 카테고리 태그 (시험/휴일만) */}
                 {cat.tag && !isToday && (
                   <span style={{
                     fontSize: 11, color: cat.color, flexShrink: 0,

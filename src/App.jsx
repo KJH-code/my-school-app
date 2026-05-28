@@ -183,26 +183,14 @@ function HomePage({ user, setActivePage }) {
   useEffect(() => {
     const fetchMeal = async () => {
       try {
-        const today = new Date();
-        const y = today.getFullYear();
-        const m = String(today.getMonth() + 1).padStart(2, "0");
-        const d = String(today.getDate()).padStart(2, "0");
-        const dateStr = `${y}${m}${d}`;
-        const API_KEY = "b239e5a1b3ec421dbad518ed199277bb";
-        const url = `https://open.neis.go.kr/hub/mealServiceDietInfo?KEY=${API_KEY}&Type=json&ATPT_OFCDC_SC_CODE=B10&SD_SCHUL_CODE=7010084&MLSV_YMD=${dateStr}`;
-        const res = await fetch(url);
+        const res = await fetch(`/api/neis/meal`);
         const data = await res.json();
-        if (data.mealServiceDietInfo) {
-          const rows = data.mealServiceDietInfo[1].row;
-          const parsed = {};
-          rows.forEach((row) => {
-            parsed[row.MMEAL_SC_CODE] = row.DDISH_NM
-              .split("<br/>")
-              .map((item) => item.replace(/\s*\(.*?\)/g, "").trim())
-              .filter(Boolean);
-          });
-          setMeals(parsed);
-        }
+        if (data.error) return;
+        const parsed = {};
+        (data.meals || []).forEach((m) => {
+          parsed[m.type] = m.dishes;
+        });
+        setMeals(parsed);
       } catch (e) {}
     };
     fetchMeal();
@@ -221,7 +209,7 @@ function HomePage({ user, setActivePage }) {
     { id: "timetable", icon: "calendar", label: "시간표 보기" },
     { id: "grades", icon: "chart", label: "성적 계산하기" },
     { id: "meal", icon: "utensils", label: "급식표 전체 보기" },
-    { id: "calendar", icon: "calendar", label: "학사일정 보기" },   // ★추가
+    { id: "calendar", icon: "calendar", label: "학사일정 보기" },
   ];
 
   return (
@@ -281,5 +269,4 @@ function HomePage({ user, setActivePage }) {
     </div>
   );
 }
-
 export default App;
