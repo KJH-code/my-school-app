@@ -29,6 +29,7 @@ const navItems = [
   { id: "volunteer", label: "벌점 경감 봉사", icon: "leaf" },
   { id: "meal", label: "급식표", icon: "utensils" },
   { id: "calendar", label: "학사일정", icon: "calendar" },
+  { id: "teams", label: "팀즈 일정", icon: "calendar" },
 ];
 
 const THEMES = ["dark", "light"];

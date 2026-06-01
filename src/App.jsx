@@ -13,6 +13,7 @@ import Meal from "./Meal";
 import Profile from "./Profile";
 import Volunteer from "./Volunteer";
 import Calendar from "./Calendar";   // ★추가
+import Teams from "./Teams";
 
 const Icon = ({ name, size = 24 }) => {
   const icons = {
@@ -97,6 +98,8 @@ function App() {
     attendance: "이석/외출 현황", meal: "급식표",
     calendar: "학사일정",   // ★추가
     volunteer: "벌점 경감 봉사", profile: "내 프로필",
+    calendar: "학사일정",
+    teams: "팀즈 일정",    // ★추가
   };
 
   const today = new Date().toLocaleDateString("ko-KR", { year: "numeric", month: "long", day: "numeric", weekday: "long" });
@@ -127,7 +130,7 @@ function App() {
 }
 
 function PageContent({ activePage, user, setActivePage }) {
-  const needsAuth = ["attendance", "volunteer", "profile"];
+  const needsAuth = ["attendance", "volunteer", "profile", "teams"];   // ★ teams 추가
   if (needsAuth.includes(activePage) && !user) {
     return (
       <div className="auth-required">
@@ -150,7 +153,8 @@ function PageContent({ activePage, user, setActivePage }) {
   if (activePage === "calendar") return <Calendar />;   // ★추가
   if (activePage === "volunteer") return <Volunteer />;
   if (activePage === "profile") return <Profile user={user} setActivePage={setActivePage} />;
-
+  if (activePage === "calendar") return <Calendar />;
+  if (activePage === "teams") return <Teams user={user} />;   // ★추가
   return null;
 }
 
